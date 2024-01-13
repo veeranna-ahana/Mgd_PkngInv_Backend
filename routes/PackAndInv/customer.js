@@ -1,10 +1,10 @@
 const customerRouter = require("express").Router();
 var createError = require("http-errors");
-const { createFolder, copyallfiles } = require("../helpers/folderhelper");
-const { misQuery, setupQuery, misQueryMod } = require("../helpers/dbconn");
+const { createFolder, copyallfiles } = require("../../helpers/folderhelper");
+const { misQuery, setupQuery, misQueryMod } = require("../../helpers/dbconn");
 const req = require("express/lib/request");
-const { sendDueList } = require("../helpers/sendmail");
-const { logger } = require("../helpers/logger");
+const { sendDueList } = require("../../helpers/sendmail");
+const { logger } = require("../../helpers/logger");
 
 customerRouter.post("/allcustomers", async (req, res, next) => {
   try {
@@ -18,7 +18,6 @@ customerRouter.post("/allcustomers", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-
 });
 
 customerRouter.post("/allcustcodename", async (req, res, next) => {
@@ -72,14 +71,14 @@ customerRouter.post("/customer", async (req, res, next) => {
           console.log("Customer Already Exists.." + customerName);
           misQueryMod(
             "Update magodmis.cust_data set IsBranch='" +
-            isBranch +
-            "',Branch='" +
-            branchName +
-            "' where Cust_name='" +
-            customerName +
-            "' And Cust_Code ='" +
-            result["Cust_Code"] +
-            "'",
+              isBranch +
+              "',Branch='" +
+              branchName +
+              "' where Cust_name='" +
+              customerName +
+              "' And Cust_Code ='" +
+              result["Cust_Code"] +
+              "'",
             (err, result1) => {
               if (err) logger.error(err);
               res.send(result1);
@@ -226,21 +225,21 @@ customerRouter.post(`/customerupdate`, async (req, res, next) => {
                       console.log("Cust Code : " + req.body.custcode);
                       misQueryMod(
                         "insert into magodmis.cust_contacts (Cust_code,Name,Designation,E_mail,Dept,Tele_Office,Tele_Mobile)" +
-                        " values('" +
-                        custcode +
-                        "','" +
-                        contactdetails[i].conName +
-                        "','" +
-                        contactdetails[i].conDesignation +
-                        "','" +
-                        contactdetails[i].conE_mail +
-                        "','" +
-                        contactdetails[i].conDept +
-                        "','" +
-                        contactdetails[i].conTele_Office +
-                        "','" +
-                        contactdetails[i].conTele_Mobile +
-                        "')",
+                          " values('" +
+                          custcode +
+                          "','" +
+                          contactdetails[i].conName +
+                          "','" +
+                          contactdetails[i].conDesignation +
+                          "','" +
+                          contactdetails[i].conE_mail +
+                          "','" +
+                          contactdetails[i].conDept +
+                          "','" +
+                          contactdetails[i].conTele_Office +
+                          "','" +
+                          contactdetails[i].conTele_Mobile +
+                          "')",
                         async (err, contins) => {
                           if (err) logger.error(err);
                           //         console.log("Contact Inserted" + contins)

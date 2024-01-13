@@ -3,9 +3,9 @@ var createError = require("http-errors");
 const CryptoJS = require("crypto-js");
 var bodyParser = require("body-parser");
 
-const { setupQuery, setupQueryMod } = require("../helpers/dbconn");
-const { signAccessToken } = require("../helpers/jwt_helper");
-const { logger } = require("../helpers/logger");
+const { setupQuery, setupQueryMod } = require("../../helpers/dbconn");
+const { signAccessToken } = require("../../helpers/jwt_helper");
+const { logger } = require("../../helpers/logger");
 
 var jsonParser = bodyParser.json();
 

@@ -1,7 +1,7 @@
 const unitRouter = require("express").Router();
 var createError = require("http-errors");
 
-const { setupQuery } = require("../helpers/dbconn");
+const { setupQuery } = require("../../helpers/dbconn");
 
 unitRouter.post("/allunits", async (req, res, next) => {
   try {
