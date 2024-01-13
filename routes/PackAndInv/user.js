@@ -1,4 +1,4 @@
-const userRouter = require("express").Router();
+const pnuserRouter = require("express").Router();
 var createError = require("http-errors");
 const CryptoJS = require("crypto-js");
 var bodyParser = require("body-parser");
@@ -9,7 +9,7 @@ const { logger } = require("../../helpers/logger");
 
 var jsonParser = bodyParser.json();
 
-userRouter.post(`/login`, jsonParser, async (req, res, next) => {
+pnuserRouter.post(`/login`, jsonParser, async (req, res, next) => {
   console.log(req.body, "/LOGIN INPUT");
   try {
     console.log("login");
@@ -69,7 +69,7 @@ userRouter.post(`/login`, jsonParser, async (req, res, next) => {
 });
 
 // Working msg is sent as blank
-// userRouter.post(`/savemenurolemapping`, async (req, res, next) => {
+// pnuserRouter.post(`/savemenurolemapping`, async (req, res, next) => {
 //     console.log("Save Menu Role Mapping API Call")
 
 //     try {
@@ -115,7 +115,7 @@ userRouter.post(`/login`, jsonParser, async (req, res, next) => {
 // });
 
 // Modifying the above working for Msg
-// userRouter.post(`/savemenurolemapping`, async (req, res, next) => {
+// pnuserRouter.post(`/savemenurolemapping`, async (req, res, next) => {
 //     console.log("Save Menu Role Mapping API Call")
 //     try {
 //         console.log(req.body.newselectedmenu);
@@ -181,7 +181,7 @@ userRouter.post(`/login`, jsonParser, async (req, res, next) => {
 //     }
 // });
 
-userRouter.post(`/savemenurolemapping`, async (req, res, next) => {
+pnuserRouter.post(`/savemenurolemapping`, async (req, res, next) => {
   console.log("Save Menu Role Mapping API Call");
 
   let sucs = false;
@@ -331,7 +331,7 @@ userRouter.post(`/savemenurolemapping`, async (req, res, next) => {
 //     }
 // });
 
-userRouter.post(`/getusers`, async (req, res, next) => {
+pnuserRouter.post(`/getusers`, async (req, res, next) => {
   console.log("get users");
   try {
     setupQueryMod(
@@ -348,7 +348,7 @@ userRouter.post(`/getusers`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/delusers`, async (req, res, next) => {
+pnuserRouter.post(`/delusers`, async (req, res, next) => {
   console.log("Delete User");
   try {
     let usrname = req.body.uname;
@@ -376,7 +376,7 @@ userRouter.post(`/delusers`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/saveusers`, async (req, res, next) => {
+pnuserRouter.post(`/saveusers`, async (req, res, next) => {
   console.log("saveusers");
   try {
     let data = req.body.usrdata;
@@ -431,7 +431,7 @@ userRouter.post(`/saveusers`, async (req, res, next) => {
   }
 });
 
-userRouter.get("/user", async (req, res, next) => {
+pnuserRouter.get("/user", async (req, res, next) => {
   try {
     const id = req.body.id;
     if (!id) res.send(createError.BadRequest());
@@ -441,7 +441,7 @@ userRouter.get("/user", async (req, res, next) => {
   }
 });
 
-userRouter.post(`/getusermodules`, async (req, res, next) => {
+pnuserRouter.post(`/getusermodules`, async (req, res, next) => {
   try {
     const strmodule = req.body.Module;
     setupQueryMod(`Select * from magod_setup.modules`, async (err, updata) => {
@@ -453,7 +453,7 @@ userRouter.post(`/getusermodules`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/getuserroles`, async (req, res, next) => {
+pnuserRouter.post(`/getuserroles`, async (req, res, next) => {
   // console.log("getuserroles")
   try {
     setupQueryMod(`Select * FROM magod_setup.userroles`, async (err, data) => {
@@ -466,7 +466,7 @@ userRouter.post(`/getuserroles`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/adduserroles`, async (req, res, next) => {
+pnuserRouter.post(`/adduserroles`, async (req, res, next) => {
   try {
     console.log("adduserroles");
     const strrole = req.body.usrroledata.Role;
@@ -507,7 +507,7 @@ userRouter.post(`/adduserroles`, async (req, res, next) => {
   }
 });
 
-// userRouter.post(`/upduserroles`, async (req, res, next) => {
+// pnuserRouter.post(`/upduserroles`, async (req, res, next) => {
 //     try {
 //         let oldrole = req.body.oldrolename;
 //         let newrole = req.body.nrerolename;
@@ -521,7 +521,7 @@ userRouter.post(`/adduserroles`, async (req, res, next) => {
 //     }
 // });
 
-userRouter.post(`/deluserroles`, async (req, res, next) => {
+pnuserRouter.post(`/deluserroles`, async (req, res, next) => {
   console.log("Delete user Role");
   try {
     let oldrole = req.body.rolenm;
@@ -552,7 +552,7 @@ userRouter.post(`/deluserroles`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/addusermodules`, async (req, res, next) => {
+pnuserRouter.post(`/addusermodules`, async (req, res, next) => {
   try {
     const strrole = req.body.Module;
     if (strrole) {
@@ -592,7 +592,7 @@ userRouter.post(`/addusermodules`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/getrolemenus`, async (req, res, next) => {
+pnuserRouter.post(`/getrolemenus`, async (req, res, next) => {
   const strrole = req.body.Role;
   try {
     setupQueryMod(
@@ -610,7 +610,7 @@ userRouter.post(`/getrolemenus`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/getusermenus`, async (req, res, next) => {
+pnuserRouter.post(`/getusermenus`, async (req, res, next) => {
   try {
     setupQueryMod(
       `Select m.MenuName, m.MenuUrl FROM magod_setup.menus m
@@ -626,7 +626,7 @@ userRouter.post(`/getusermenus`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/delusermenus`, async (req, res, next) => {
+pnuserRouter.post(`/delusermenus`, async (req, res, next) => {
   try {
     let mnuname = req.body.mname;
     setupQueryMod(
@@ -641,7 +641,7 @@ userRouter.post(`/delusermenus`, async (req, res, next) => {
   }
 });
 
-userRouter.post(`/addusermenus`, async (req, res, next) => {
+pnuserRouter.post(`/addusermenus`, async (req, res, next) => {
   console.log("addusermenus");
   // console.log(req.body.menu)
   let msg = "";
@@ -689,4 +689,4 @@ userRouter.post(`/addusermenus`, async (req, res, next) => {
   }
 });
 
-module.exports = userRouter;
+module.exports = pnuserRouter;

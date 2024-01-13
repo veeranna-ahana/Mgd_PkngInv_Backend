@@ -1,9 +1,9 @@
-const unitRouter = require("express").Router();
+const pnunitRouter = require("express").Router();
 var createError = require("http-errors");
 
 const { setupQuery } = require("../../helpers/dbconn");
 
-unitRouter.post("/allunits", async (req, res, next) => {
+pnunitRouter.post("/allunits", async (req, res, next) => {
   try {
     setupQuery(
       "SELECT UnitID,UnitName,Unit_Address FROM magod_setup.magodlaser_units where Current = '1'",
@@ -17,7 +17,7 @@ unitRouter.post("/allunits", async (req, res, next) => {
   }
 });
 
-unitRouter.post("/unit", async (req, res, next) => {
+pnunitRouter.post("/unit", async (req, res, next) => {
   try {
     const { id } = req.body;
     setupQuery(
@@ -31,4 +31,4 @@ unitRouter.post("/unit", async (req, res, next) => {
   }
 });
 
-module.exports = unitRouter;
+module.exports = pnunitRouter;
