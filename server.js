@@ -4,9 +4,9 @@ const cors = require("cors");
 
 const app = express();
 
-const userRouter = require("./routes/PackAndInv/user");
-const unitRouter = require("./routes/PackAndInv/units");
-const customerRouter = require("./routes/PackAndInv/customer");
+const pnuserRouter = require("./routes/PackAndInv/user");
+const pnunitRouter = require("./routes/PackAndInv/units");
+const pncustomerRouter = require("./routes/PackAndInv/customer");
 const { logger } = require("./helpers/logger");
 //PAKINGINVOICE
 const customerdataRouter = require("./routes/PackAndInv/CustomerData");
@@ -17,11 +17,9 @@ const inspectionProfileRouter = require("./routes/PackAndInv/InspectionProfile")
 // All Routes --------------------
 app.use(cors());
 app.use(bodyParser.json());
-app.use("/packuser", userRouter);
-app.use("/packunits", unitRouter);
-app.use("/packcustomers", customerRouter);
-
-//PAKINGINVOICE Inspection
+app.use("/packuser", pnuserRouter);
+app.use("/packunits", pnunitRouter);
+app.use("/packcustomers", pncustomerRouter);
 app.use("/customerdata", customerdataRouter);
 app.use("/pnprofile", pnProfileRouter);
 app.use("/pnrDC", pnrdcRouter);

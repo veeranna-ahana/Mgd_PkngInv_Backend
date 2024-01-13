@@ -1,4 +1,4 @@
-const customerRouter = require("express").Router();
+const pncustomerRouter = require("express").Router();
 var createError = require("http-errors");
 const { createFolder, copyallfiles } = require("../../helpers/folderhelper");
 const { misQuery, setupQuery, misQueryMod } = require("../../helpers/dbconn");
@@ -6,7 +6,7 @@ const req = require("express/lib/request");
 const { sendDueList } = require("../../helpers/sendmail");
 const { logger } = require("../../helpers/logger");
 
-customerRouter.post("/allcustomers", async (req, res, next) => {
+pncustomerRouter.post("/allcustomers", async (req, res, next) => {
   try {
     misQueryMod(
       "Select * from magodmis.cust_data order by Cust_name asc",
@@ -20,7 +20,7 @@ customerRouter.post("/allcustomers", async (req, res, next) => {
   }
 });
 
-customerRouter.post("/allcustcodename", async (req, res, next) => {
+pncustomerRouter.post("/allcustcodename", async (req, res, next) => {
   try {
     misQueryMod(
       "Select Cust_Code,Cust_name from magodmis.cust_data order by Cust_name asc",
@@ -34,7 +34,7 @@ customerRouter.post("/allcustcodename", async (req, res, next) => {
   }
 });
 
-customerRouter.post("/getcustomerdetails", async (req, res, next) => {
+pncustomerRouter.post("/getcustomerdetails", async (req, res, next) => {
   try {
     let custid = req.body.custcode;
     misQueryMod(
@@ -49,7 +49,7 @@ customerRouter.post("/getcustomerdetails", async (req, res, next) => {
   }
 });
 
-customerRouter.post("/customer", async (req, res, next) => {
+pncustomerRouter.post("/customer", async (req, res, next) => {
   try {
     //  const custcode = req.body.Cust_Code;
     const customerName = req.body.customerName;
@@ -128,7 +128,7 @@ customerRouter.post("/customer", async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/customerupdate`, async (req, res, next) => {
+pncustomerRouter.post(`/customerupdate`, async (req, res, next) => {
   console.log("customerupdate - Yes");
   try {
     let msg = "";
@@ -299,7 +299,7 @@ customerRouter.post(`/customerupdate`, async (req, res, next) => {
   }
 });
 
-customerRouter.post("/getcustomercontactdets", async (req, res, next) => {
+pncustomerRouter.post("/getcustomercontactdets", async (req, res, next) => {
   console.log("get contact dets");
   try {
     let custid = req.body.custcode;
@@ -318,7 +318,7 @@ customerRouter.post("/getcustomercontactdets", async (req, res, next) => {
   }
 });
 
-// customerRouter.post('/getcustomercontactteledets', async (req, res, next) => {
+// pncustomerRouter.post('/getcustomercontactteledets', async (req, res, next) => {
 //     console.log("teledets - 1")
 //     try {
 //         //  let contid = req.body.contid;
@@ -353,7 +353,7 @@ customerRouter.post("/getcustomercontactdets", async (req, res, next) => {
 // });
 
 // Existing Assembly Data for a Customer
-customerRouter.post(`/customerassy`, async (req, res, next) => {
+pncustomerRouter.post(`/customerassy`, async (req, res, next) => {
   // console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -371,7 +371,7 @@ customerRouter.post(`/customerassy`, async (req, res, next) => {
 });
 
 // Inserting Customer Assembly data
-customerRouter.post("/customerinsassembly", async (req, res, next) => {
+pncustomerRouter.post("/customerinsassembly", async (req, res, next) => {
   console.log("Customer Assembly Insertion");
   try {
     const custcode = req.body.custcode;
@@ -421,7 +421,7 @@ customerRouter.post("/customerinsassembly", async (req, res, next) => {
   }
 });
 // Checking Duplicate Customer Assembly data
-customerRouter.post("/chkassydupl", async (req, res, next) => {
+pncustomerRouter.post("/chkassydupl", async (req, res, next) => {
   console.log("Checking Duplicate Customer Assembly data");
   try {
     const custcode = req.body.custcode;
@@ -445,7 +445,7 @@ customerRouter.post("/chkassydupl", async (req, res, next) => {
 });
 
 // Inserting Customer BOM PArts data
-customerRouter.post("/custbomparts", async (req, res, next) => {
+pncustomerRouter.post("/custbomparts", async (req, res, next) => {
   console.log("Customer BOM Parts Insertion");
   try {
     const custcode = req.body.custcode;
@@ -508,7 +508,7 @@ customerRouter.post("/custbomparts", async (req, res, next) => {
   }
 });
 
-customerRouter.post("/getcustomercontactdets", async (req, res, next) => {
+pncustomerRouter.post("/getcustomercontactdets", async (req, res, next) => {
   console.log("Existing Customer Contact");
   try {
     const { custcode } = req.body.custcode;
@@ -524,7 +524,7 @@ customerRouter.post("/getcustomercontactdets", async (req, res, next) => {
   }
 });
 
-// customerRouter.post("/getcustomercontactteledets", async (req,res,next) => {
+// pncustomerRouter.post("/getcustomercontactteledets", async (req,res,next) => {
 //     console.log("Existing Customer Contact")
 //     try {
 //         const {contid} = req.body.contid;
@@ -537,7 +537,7 @@ customerRouter.post("/getcustomercontactdets", async (req, res, next) => {
 // });
 
 // sending data to Customer Part Receipt
-customerRouter.post(`/getcustomerbomparts`, async (req, res, next) => {
+pncustomerRouter.post(`/getcustomerbomparts`, async (req, res, next) => {
   console.log("getcustomerbomparts");
   try {
     const ccode = req.body.custcode;
@@ -556,7 +556,7 @@ customerRouter.post(`/getcustomerbomparts`, async (req, res, next) => {
 });
 
 // Bom Assembly Parts
-customerRouter.post("/bomassemblyparts", async (req, res) => {
+pncustomerRouter.post("/bomassemblyparts", async (req, res) => {
   console.log("Bom Assembly Parts");
   try {
     const ccode = req.body.custcode;
@@ -595,7 +595,7 @@ customerRouter.post("/bomassemblyparts", async (req, res) => {
 });
 
 // Get Customer BOM Parts
-customerRouter.post("/getcustpartdetails", async (req, res, next) => {
+pncustomerRouter.post("/getcustpartdetails", async (req, res, next) => {
   //  console.log("Customer Part details" + req.body.custcode)
   try {
     const custcode = req.body.custcode;
@@ -613,7 +613,7 @@ customerRouter.post("/getcustpartdetails", async (req, res, next) => {
 });
 
 // Get Customer BOM Assembly Parts
-customerRouter.post("/custbomassemblyparts", async (req, res, next) => {
+pncustomerRouter.post("/custbomassemblyparts", async (req, res, next) => {
   //   console.log("Customer BOM Assembly Parts" + req.body.custcode)
 
   try {
@@ -639,7 +639,7 @@ customerRouter.post("/custbomassemblyparts", async (req, res, next) => {
 
 // Get Existing Customer
 
-customerRouter.post(`/getcustomer`, async (req, res, next) => {
+pncustomerRouter.post(`/getcustomer`, async (req, res, next) => {
   //   console.log("Cust Code received");
   try {
     const custcode = req.body.custcode;
@@ -660,7 +660,7 @@ customerRouter.post(`/getcustomer`, async (req, res, next) => {
 
 // geting customer drawing data
 //SELECT * FROM magodmis.dwg_data d WHERE d.`Cust_Code`=@Cust_Code;
-customerRouter.post(`/customersdrawings`, async (req, res, next) => {
+pncustomerRouter.post(`/customersdrawings`, async (req, res, next) => {
   //    console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -681,7 +681,7 @@ customerRouter.post(`/customersdrawings`, async (req, res, next) => {
 });
 
 // geting customer Order data
-customerRouter.post(`/customerorders`, async (req, res, next) => {
+pncustomerRouter.post(`/customerorders`, async (req, res, next) => {
   console.log("customerorders");
   try {
     const custcode = req.body.custcode;
@@ -750,7 +750,7 @@ customerRouter.post(`/customerorders`, async (req, res, next) => {
 });
 
 // geting customer Order Status data
-customerRouter.post(`/orderstatus`, async (req, res, next) => {
+pncustomerRouter.post(`/orderstatus`, async (req, res, next) => {
   try {
     //   if (!doctype) res.send(createError.BadRequest())
     setupQuery(
@@ -765,7 +765,7 @@ customerRouter.post(`/orderstatus`, async (req, res, next) => {
 });
 
 // geting customer Order Schedule data
-customerRouter.post(`/orderschedule`, async (req, res, next) => {
+pncustomerRouter.post(`/orderschedule`, async (req, res, next) => {
   console.log(req.body);
   try {
     const orderno = req.body.orderno;
@@ -783,7 +783,7 @@ customerRouter.post(`/orderschedule`, async (req, res, next) => {
 });
 
 // geting customer Order Schedule Tasks data
-customerRouter.post(`/orderschtasks`, async (req, res, next) => {
+pncustomerRouter.post(`/orderschtasks`, async (req, res, next) => {
   console.log(req.body);
   try {
     const orderno = req.body.orderno;
@@ -803,7 +803,7 @@ customerRouter.post(`/orderschtasks`, async (req, res, next) => {
 });
 
 // geting customer Order Details data
-customerRouter.post(`/orderdetails`, async (req, res, next) => {
+pncustomerRouter.post(`/orderdetails`, async (req, res, next) => {
   console.log(req.body);
   try {
     const orderno = req.body.orderno;
@@ -819,7 +819,7 @@ customerRouter.post(`/orderdetails`, async (req, res, next) => {
   }
 });
 // getting Customer ORder Invoice data
-customerRouter.post(`/orderinvoices`, async (req, res, next) => {
+pncustomerRouter.post(`/orderinvoices`, async (req, res, next) => {
   try {
     console.log(req.body);
     const orderno = req.body.orderno;
@@ -837,7 +837,7 @@ customerRouter.post(`/orderinvoices`, async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/orderinvdwg`, async (req, res, next) => {
+pncustomerRouter.post(`/orderinvdwg`, async (req, res, next) => {
   console.log(req.body);
   console.log("Order Invoices DWG");
   try {
@@ -854,7 +854,7 @@ customerRouter.post(`/orderinvdwg`, async (req, res, next) => {
     next(error);
   }
 });
-customerRouter.post(`/schdets`, async (req, res, next) => {
+pncustomerRouter.post(`/schdets`, async (req, res, next) => {
   console.log(req.body);
 
   try {
@@ -872,7 +872,7 @@ customerRouter.post(`/schdets`, async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/schtasksdets`, async (req, res, next) => {
+pncustomerRouter.post(`/schtasksdets`, async (req, res, next) => {
   try {
     const nctaskid = req.body.nctaskid;
     misQueryMod(
@@ -887,7 +887,7 @@ customerRouter.post(`/schtasksdets`, async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/printduereport`, async (req, res, next) => {
+pncustomerRouter.post(`/printduereport`, async (req, res, next) => {
   console.log("Print Due Report ");
   try {
     const custcode = req.body.custcode;
@@ -933,7 +933,7 @@ customerRouter.post(`/printduereport`, async (req, res, next) => {
   }
 });
 // geting customer material stock position data
-customerRouter.post(`/customermtrlstock`, async (req, res, next) => {
+pncustomerRouter.post(`/customermtrlstock`, async (req, res, next) => {
   try {
     const custcode = req.body.custcode;
 
@@ -953,7 +953,7 @@ customerRouter.post(`/customermtrlstock`, async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/getmtrlrvlist`, async (req, res, next) => {
+pncustomerRouter.post(`/getmtrlrvlist`, async (req, res, next) => {
   try {
     const type = req.body.Type;
     const status = req.body.Status;
@@ -1010,7 +1010,7 @@ customerRouter.post(`/getmtrlrvlist`, async (req, res, next) => {
 
 // geting customer material Receipts data
 
-customerRouter.post(`/customermtrlreceipts`, async (req, res, next) => {
+pncustomerRouter.post(`/customermtrlreceipts`, async (req, res, next) => {
   try {
     const custcode = req.body.custcode;
 
@@ -1030,7 +1030,7 @@ customerRouter.post(`/customermtrlreceipts`, async (req, res, next) => {
 });
 
 // geting customer material Receipts Details data
-customerRouter.post(`/customermtrlrectdetails`, async (req, res, next) => {
+pncustomerRouter.post(`/customermtrlrectdetails`, async (req, res, next) => {
   try {
     const rvid = req.body.rvid;
 
@@ -1049,7 +1049,7 @@ customerRouter.post(`/customermtrlrectdetails`, async (req, res, next) => {
 });
 
 // geting customer material Parts Returned data
-customerRouter.post(`/customermtrlpartsreturned`, async (req, res, next) => {
+pncustomerRouter.post(`/customermtrlpartsreturned`, async (req, res, next) => {
   try {
     const custcode = req.body.custcode;
 
@@ -1067,7 +1067,7 @@ customerRouter.post(`/customermtrlpartsreturned`, async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/updatebomassembly`, async (req, res, next) => {
+pncustomerRouter.post(`/updatebomassembly`, async (req, res, next) => {
   console.log("Update Assm details");
   try {
     const mmagodid = req.body.mmagodid;
@@ -1095,7 +1095,7 @@ customerRouter.post(`/updatebomassembly`, async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/deletebomassmparts`, async (req, res, next) => {
+pncustomerRouter.post(`/deletebomassmparts`, async (req, res, next) => {
   console.log("Deleting Parts ");
   try {
     const asmid = req.body.assmid;
@@ -1128,7 +1128,7 @@ customerRouter.post(`/deletebomassmparts`, async (req, res, next) => {
 });
 
 // geting customer material Parts Returned data
-customerRouter.post(
+pncustomerRouter.post(
   `/customermtrlscrapUnusedreturned`,
   async (req, res, next) => {
     console.log("Scrap mtrl");
@@ -1154,7 +1154,7 @@ customerRouter.post(
 );
 
 // Customer Invoice and Payment Receipts data
-customerRouter.post(`/customerduelist`, async (req, res, next) => {
+pncustomerRouter.post(`/customerduelist`, async (req, res, next) => {
   console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -1181,7 +1181,7 @@ customerRouter.post(`/customerduelist`, async (req, res, next) => {
   }
 });
 
-customerRouter.post(`/customeroverduelist`, async (req, res, next) => {
+pncustomerRouter.post(`/customeroverduelist`, async (req, res, next) => {
   console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -1210,7 +1210,7 @@ customerRouter.post(`/customeroverduelist`, async (req, res, next) => {
 });
 
 // Customer - Dues and overdues data
-customerRouter.post(`/customerduesoverdues`, async (req, res, next) => {
+pncustomerRouter.post(`/customerduesoverdues`, async (req, res, next) => {
   try {
     const custcode = req.body.custcode;
     if (!custcode) return res.send(createError.BadRequest());
@@ -1239,7 +1239,7 @@ customerRouter.post(`/customerduesoverdues`, async (req, res, next) => {
 });
 
 // Customer - Part Payment Duelist data
-customerRouter.post(`/pprcustomerduelist`, async (req, res, next) => {
+pncustomerRouter.post(`/pprcustomerduelist`, async (req, res, next) => {
   console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -1268,7 +1268,7 @@ customerRouter.post(`/pprcustomerduelist`, async (req, res, next) => {
 
 //Sned mails
 
-customerRouter.post(`/sendmailwithattachment`, async (req, res, next) => {
+pncustomerRouter.post(`/sendmailwithattachment`, async (req, res, next) => {
   console.log("Send Mails with Attachment");
   try {
     const mailto = req.body.to;
@@ -1287,7 +1287,7 @@ customerRouter.post(`/sendmailwithattachment`, async (req, res, next) => {
 });
 
 // Customer Invoice form data from dc_invno
-customerRouter.post(`/customerdlinvform`, async (req, res, next) => {
+pncustomerRouter.post(`/customerdlinvform`, async (req, res, next) => {
   console.log(req.body);
   try {
     const dcinvno = req.body.dcinvno;
@@ -1306,7 +1306,7 @@ customerRouter.post(`/customerdlinvform`, async (req, res, next) => {
 });
 
 // Customer Invoice form data from dc_invno - Tax Details
-customerRouter.post(`/customerdlinvformtaxdets`, async (req, res, next) => {
+pncustomerRouter.post(`/customerdlinvformtaxdets`, async (req, res, next) => {
   console.log(req.body);
   try {
     const dcinvno = req.body.dcinvno;
@@ -1325,7 +1325,7 @@ customerRouter.post(`/customerdlinvformtaxdets`, async (req, res, next) => {
 });
 
 // Customer Dues Summary
-customerRouter.post(`/customerduessummary`, async (req, res, next) => {
+pncustomerRouter.post(`/customerduessummary`, async (req, res, next) => {
   console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -1376,7 +1376,7 @@ customerRouter.post(`/customerduessummary`, async (req, res, next) => {
 });
 // Customers Outstanding Summary
 
-customerRouter.post(`/customeroutstandings`, async (req, res, next) => {
+pncustomerRouter.post(`/customeroutstandings`, async (req, res, next) => {
   console.log(req.body);
   try {
     //        const custcode = req.body.custcode;
@@ -1469,7 +1469,7 @@ customerRouter.post(`/customeroutstandings`, async (req, res, next) => {
 });
 // customer outstanding invoices
 
-customerRouter.post(`/outstandinginvoices`, async (req, res, next) => {
+pncustomerRouter.post(`/outstandinginvoices`, async (req, res, next) => {
   console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -1491,7 +1491,7 @@ customerRouter.post(`/outstandinginvoices`, async (req, res, next) => {
   }
 });
 // Customer Receipts Info
-customerRouter.post(`/customerreceiptsinfo`, async (req, res, next) => {
+pncustomerRouter.post(`/customerreceiptsinfo`, async (req, res, next) => {
   console.log(req.body);
   try {
     const custcode = req.body.custcode;
@@ -1510,7 +1510,7 @@ customerRouter.post(`/customerreceiptsinfo`, async (req, res, next) => {
 });
 
 // Customer Receipts Details
-customerRouter.post(`/customerreceiptdets`, async (req, res, next) => {
+pncustomerRouter.post(`/customerreceiptdets`, async (req, res, next) => {
   console.log(req.body);
   try {
     const recdpvid = req.body.recdpvid;
@@ -1528,4 +1528,4 @@ customerRouter.post(`/customerreceiptdets`, async (req, res, next) => {
   }
 });
 
-module.exports = customerRouter;
+module.exports = pncustomerRouter;
