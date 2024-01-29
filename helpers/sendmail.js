@@ -1,6 +1,7 @@
 const nodemailer = require("nodemailer");
 var html_to_pdf = require("html-pdf-node");
-const { merge } = require("merge-pdf-buffers");
+// const { merge } = require("merge-pdf-buffers");
+const { PDFDocument } = require("pdf-lib");
 
 const {
   quotationStartPage,
@@ -25,6 +26,22 @@ const genPdf = (content, callback) => {
     .then((pdfBuffer) => {
       callback(pdfBuffer);
     });
+};
+
+const mergePdfBuffers = async (pdfBuffers) => {
+  const mergedPdf = await PDFDocument.create();
+
+  for (const pdfBuffer of pdfBuffers) {
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    const copiedPages = await mergedPdf.copyPages(
+      pdfDoc,
+      pdfDoc.getPageIndices()
+    );
+    copiedPages.forEach((page) => mergedPdf.addPage(page));
+  }
+
+  const mergedPdfBytes = await mergedPdf.save();
+  return mergedPdfBytes;
 };
 
 const sendQuotation = async (customer, qtnDetails, qtnTC, callback) => {
@@ -53,7 +70,8 @@ const sendQuotation = async (customer, qtnDetails, qtnTC, callback) => {
     `;
   genPdf(emailcontent, async (pdfBuffer) => {
     genPdf(emailcontent2, async (pdfBuffer2) => {
-      const merged = await merge([pdfBuffer, pdfBuffer2]);
+      // const merged = await merge([pdfBuffer, pdfBuffer2]);
+      const mergedPdfBuffer = await mergePdfBuffers([buffer1, buffer2]);
       let info = await transporter.sendMail({
         // from: '"Pranav M S" <pranav13100@gmail.com>', // sender address
         from: process.env.From_EMAIL, // sender address
@@ -106,6 +124,7 @@ const sendDueList = async (customer, duesdata, duedata, callback) => {
   genPdf(emailcontent, async (pdfBuffer) => {
     //  genPdf(emailcontent2, async (pdfBuffer2) => {
     // const merged = await merge([pdfBuffer, pdfBuffer2]);
+    const mergedPdfBuffer = await mergePdfBuffers([buffer1, buffer2]);
     let info = await transporter.sendMail({
       //   from: '"Magod Laser" <magodlaser3@gmail.com>', // sender address
       from: process.env.From_EMAIL, // sender address
