@@ -3,6 +3,7 @@ require("dotenv").config();
 
 const dbHost = process.env.DB_HOST;
 const dbUser = process.env.DB_USER;
+const dbPort = process.env.DB_PORT;
 const dbPassword = process.env.DB_PASSWORD;
 const dbDatabase1 = process.env.DB_DATABASE_1; //magodmis
 const dbDatabase2 = process.env.DB_DATABASE_2; //magod_setup
@@ -14,6 +15,7 @@ const dbDatabase6 = process.env.DB_DATABASE_6; //magod_mtrl
 var misConn = mysql.createConnection({
   host: dbHost,
   user: dbUser,
+  port: dbPort,
   password: dbPassword,
   database: dbDatabase1,
 });
@@ -21,6 +23,7 @@ var misConn = mysql.createConnection({
 var setupConn = mysql.createConnection({
   host: dbHost,
   user: dbUser,
+  port: dbPort,
   password: dbPassword,
   database: dbDatabase2,
 });
@@ -28,6 +31,7 @@ var setupConn = mysql.createConnection({
 var qtnConn = mysql.createConnection({
   host: dbHost,
   user: dbUser,
+  port: dbPort,
   password: dbPassword,
   database: dbDatabase3,
 });
@@ -35,6 +39,7 @@ var qtnConn = mysql.createConnection({
 var mchConn = mysql.createConnection({
   host: dbHost,
   user: dbUser,
+  port: dbPort,
   password: dbPassword,
   database: dbDatabase4,
 });
@@ -42,6 +47,7 @@ var mchConn = mysql.createConnection({
 var slsConn = mysql.createConnection({
   host: dbHost,
   user: dbUser,
+  port: dbPort,
   password: dbPassword,
   database: dbDatabase5,
 });
@@ -49,6 +55,7 @@ var slsConn = mysql.createConnection({
 var mtrlConn = mysql.createConnection({
   host: dbHost,
   user: dbUser,
+  port: dbPort,
   password: dbPassword,
   database: dbDatabase6,
 });

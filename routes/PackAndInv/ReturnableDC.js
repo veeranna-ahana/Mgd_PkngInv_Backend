@@ -94,18 +94,77 @@ pnrdcRouter.get("/getStates", async (req, res, next) => {
   }
 });
 
+// pnrdcRouter.post("/loadTaxes", async (req, res, next) => {
+//   const { stateId, unitStateId, isGovOrg, isForiegn, gstNo, UnitGSTNo } =
+//     req.body;
+//   // console.log("StateID", req.body);
+
+//   try {
+//     if (stateId === unitStateId) {
+//       insertQuery = `SELECT t.TaxID as DCTaxId, 1 as TaxId, t.TaxName, t.TaxOn, 0 as TaxableAmount, t.Tax_Percent, 0 as TaxAmount
+//       FROM magod_setup.taxdb t WHERE t.IGST = 0 AND t.UnderGroup NOT LIKE 'INCOMETAX' AND DATE(t.EffectiveTO) >= CURRENT_DATE();`;
+//     } else {
+//       insertQuery = `
+//       SELECT  t.TaxID as DCTaxId, 1 as TaxId, t.TaxName, t.TaxOn, 0 as TaxableAmount, t.Tax_Percent, 0 as TaxAmount
+//       FROM magod_setup.taxdb t WHERE t.IGST = 1 AND t.UnderGroup NOT LIKE 'INCOMETAX' AND DATE(t.EffectiveTO) >= CURRENT_DATE();`;
+//     }
+
+//     misQueryMod(insertQuery, (err, insertResult) => {
+//       if (err) {
+//         logger.error(err);
+//         return next(err);
+//       }
+//       res.send(insertResult);
+//     });
+//   } catch (error) {
+//     logger.error(error);
+//     next(error);
+//   }
+// });
+
 pnrdcRouter.post("/loadTaxes", async (req, res, next) => {
-  const { stateId, unitStateId } = req.body;
-  // console.log("StateID", req.body);
+  const { stateId, unitStateId, isGovOrg, isForiegn, gstNo, UnitGSTNo } =
+    req.body;
+
+  console.log("gstNo", req.body.gstNo);
+  console.log("isGovOrg", req.body.isGovOrg);
+  console.log("isForiegn", req.body.isForiegn);
 
   try {
-    if (stateId === unitStateId) {
-      insertQuery = `SELECT t.TaxID as DCTaxId, 1 as TaxId, t.TaxName, t.TaxOn, 0 as TaxableAmount, t.Tax_Percent, 0 as TaxAmount
-      FROM magod_setup.taxdb t WHERE t.IGST = 0 AND t.UnderGroup NOT LIKE 'INCOMETAX' AND DATE(t.EffectiveTO) >= CURRENT_DATE();`;
-    } else {
+    let insertQuery = "";
+
+    if (isGovOrg === 1) {
+      // No taxes for government organizations or No Tax for Exports
+      insertQuery = `SELECT t.TaxID AS DCTaxId, 1 AS TaxId, t.TaxName, t.TaxOn, 0 AS TaxableAmount, t.Tax_Percent, 0 AS TaxAmount
+      FROM magod_setup.taxdb t WHERE TaxId IS NULL AND DATE(t.EffectiveTO) > CURRENT_DATE();`;
+    } else if (isForiegn === 1) {
+      // No taxes for government organizations or No Tax for Exports
+      insertQuery = `SELECT t.TaxID AS DCTaxId, 1 AS TaxId, t.TaxName, t.TaxOn, 0 AS TaxableAmount, t.Tax_Percent, 0 AS TaxAmount
+      FROM magod_setup.taxdb t WHERE IGST !=0 AND t.UNDERGROUP != 'INCOMETAX' AND DATE(t.EffectiveTO) > CURRENT_DATE();`;
+    } else if (gstNo === null) {
+      // Cust GST unregistered then Tax as per state
+      insertQuery = `SELECT t.TaxID AS DCTaxId, 1 AS TaxId, t.TaxName, t.TaxOn, 0 AS TaxableAmount, t.Tax_Percent, 0 AS TaxAmount
+      FROM magod_setup.taxdb t WHERE t.IGST = 0 AND t.UnderGroup !=  'INCOMETAX' AND DATE(t.EffectiveTO) > CURRENT_DATE();
+      ;
+      `;
+    } else if (stateId !== unitStateId) {
+      // If Out of State tax IGST
       insertQuery = `
-      SELECT  t.TaxID as DCTaxId, 1 as TaxId, t.TaxName, t.TaxOn, 0 as TaxableAmount, t.Tax_Percent, 0 as TaxAmount
-      FROM magod_setup.taxdb t WHERE t.IGST = 1 AND t.UnderGroup NOT LIKE 'INCOMETAX' AND DATE(t.EffectiveTO) >= CURRENT_DATE();`;
+        SELECT t.TaxID AS DCTaxId, 1 AS TaxId, t.TaxName, t.TaxOn, 0 AS TaxableAmount, t.Tax_Percent, 0 AS TaxAmount
+        FROM magod_setup.taxdb t WHERE t.IGST != 0 AND t.UnderGroup != 'INCOMETAX' AND DATE(t.EffectiveTO) > CURRENT_DATE();
+      `;
+    } else if (gstNo === UnitGSTNo) {
+      // Unit Transfer Within State No Taxes
+      insertQuery = `
+        SELECT t.TaxID AS DCTaxId, 1 AS TaxId, t.TaxName, t.TaxOn, 0 AS TaxableAmount, t.Tax_Percent, 0 AS TaxAmount
+        FROM magod_setup.taxdb t WHERE TaxId IS NULL AND DATE(t.EffectiveTO) > CURRENT_DATE();
+      `;
+    } else {
+      // Default case, apply applicable taxes
+      insertQuery = `
+        SELECT t.TaxID AS DCTaxId, 1 AS TaxId, t.TaxName, t.TaxOn, 0 AS TaxableAmount, t.Tax_Percent, 0 AS TaxAmount
+        FROM magod_setup.taxdb t WHERE t.IGST = 0 AND t.UnderGroup != 'INCOMETAX' AND DATE(t.EffectiveTO) > CURRENT_DATE();
+      `;
     }
 
     misQueryMod(insertQuery, (err, insertResult) => {
@@ -256,6 +315,8 @@ pnrdcRouter.post("/updateSave", async (req, res, next) => {
     gstNo,
     deliveryAddress,
     deliveryState,
+    deliveryContactName,
+    deliveryContactNo,
     inspectedBy,
     packedBy,
     selectedMode,
@@ -306,6 +367,8 @@ pnrdcRouter.post("/updateSave", async (req, res, next) => {
           ScarpWt = ${scrapWeight},
           Total_Wt = ${totalWeight},
           VehNo = '${vehicleDetails}',
+          Del_ContactName='${deliveryContactName}',
+          Del_ContactNo= '${deliveryContactNo}',
           EWayBillRef = '${eWayRef}',
           Del_StateId = '${stateCode}',
           Net_Total = '${taxableAmount}',
@@ -522,16 +585,11 @@ pnrdcRouter.post("/deleteRow", async (req, res, next) => {
 });
 
 pnrdcRouter.post("/createDC", async (req, res, next) => {
-  const { dcNo, dcInvNo, dcDate, unit } = req.body;
-  // console.log("DCINVNO", req.body.dcInvNo);
+  const { dcInvNo, unit, srlType, prefix } = req.body;
 
-  const unitName = `${unit}`;
   const date = new Date();
+  // const date = new Date("2024-04-01");
   const year = date.getFullYear();
-  const startYear = date.getMonth() >= 3 ? year : year - 1;
-
-  const firstLetter = unitName.charAt(0).toUpperCase();
-  const financialYearStartDate = new Date(`${startYear}-04-01`);
 
   const getYear =
     date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
@@ -544,17 +602,10 @@ pnrdcRouter.post("/createDC", async (req, res, next) => {
 
   try {
     const selectQuery = `
-      SELECT * 
-      FROM magodmis.draft_dc_inv_register 
-      WHERE DC_InvType = 'ReturnableDC' 
-        AND IsDC = 1 
-        AND DCStatus = 'Despatched'
-        AND DC_Fin_Year = '${finYear}' 
-      ORDER BY DC_No DESC 
-      LIMIT 1;
+    SELECT * FROM magod_setup.magod_runningno WHERE SrlType='${srlType}' AND UnitName='${unit}' ORDER BY Id DESC LIMIT 1;
     `;
 
-    misQueryMod(selectQuery, async (selectError, selectResult) => {
+    setupQueryMod(selectQuery, async (selectError, selectResult) => {
       if (selectError) {
         logger.error(selectError);
         return next(selectResult);
@@ -563,14 +614,27 @@ pnrdcRouter.post("/createDC", async (req, res, next) => {
       let newDCNo = "";
 
       if (selectResult && selectResult.length > 0) {
-        const lastDCNo = selectResult[0].DC_No;
-        const numericPart = parseInt(lastDCNo.match(/\d+$/)[0]) + 1;
-        const formattedNumericPart = numericPart.toString().padStart(4, "0");
-        newDCNo = `${firstLetter}G${formattedNumericPart}`;
+        const lastRunNo = selectResult[0].Running_No;
+        const numericPart = parseInt(lastRunNo) + 1;
+
+        const paddedNumericPart = numericPart.toString().padStart(4, "0");
+
+        newDCNo = `${prefix}${paddedNumericPart}`;
         console.log("New DCNo:", newDCNo);
-      } else {
-        newDCNo = `${firstLetter}G0001`;
-        console.log("New DCNo:", newDCNo);
+
+        // Update Running_No in magod_setup.magod_runningno
+        const updateRunningNoQuery = `
+          UPDATE magod_setup.magod_runningno
+          SET Running_No = ${numericPart}
+          WHERE SrlType='${srlType}' AND UnitName='${unit}' AND Period='${finYear}';
+        `;
+
+        setupQueryMod(updateRunningNoQuery, (updateError, updateResult) => {
+          if (updateError) {
+            logger.error(updateError);
+            return next(updateResult);
+          }
+        });
       }
 
       // Your existing update query
@@ -579,7 +643,7 @@ pnrdcRouter.post("/createDC", async (req, res, next) => {
         SET DC_Date = curdate(),
         DC_No = '${newDCNo}',
         DC_Fin_Year='${finYear}',
-        DCStatus = 'Despatched'    
+        DCStatus = 'Despatched'
         WHERE DC_Inv_No = '${dcInvNo}'`,
         async (updateError, updateResult) => {
           if (updateError) {
@@ -966,27 +1030,27 @@ pnrdcRouter.post("/updateSrl", async (req, res, next) => {
 });
 
 pnrdcRouter.post("/accept", async (req, res, next) => {
-  const { rvId, firstTable, dcInvNo, ewayBillNo } = req.body;
+  const { rvId, firstTable, dcInvNo, ewayBillNo, unit, srlType, prefix } =
+    req.body;
 
   const date = new Date();
+  // const date = new Date("2024-04-01");
   const year = date.getFullYear();
   const startYear = date.getMonth() >= 3 ? year : year - 1;
 
   const getYear =
     date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
   const yearParts = getYear.split("-");
+  const yearShort = year.toString().slice(-2);
   const startYearShort = yearParts[0].slice(-2);
   const endYearShort = yearParts[1].slice(-2);
   const finYear = `${startYearShort}/${endYearShort}`;
 
   try {
-    // Update material_receipt_register
     const selectQuery = `
-    select * from magodmis.material_receipt_register where 
-    Year(RV_Date) = YEAR(CURRENT_DATE) AND (RV_No IS NULL OR RV_No != '' AND RV_No != 'Draft') order by RvId desc limit 1;
-    `;
+    SELECT * FROM magod_setup.magod_runningno WHERE SrlType='${srlType}' AND UnitName='${unit}' ORDER BY Id DESC LIMIT 1`;
 
-    misQueryMod(selectQuery, async (selectError, selectResult) => {
+    setupQueryMod(selectQuery, async (selectError, selectResult) => {
       if (selectError) {
         logger.error(selectError);
         return next(selectResult);
@@ -994,44 +1058,30 @@ pnrdcRouter.post("/accept", async (req, res, next) => {
 
       let newRvNo = "";
 
-      // if (selectResult.length === 0) {
-      //   newRvNo = `${endYearShort}/J0001`;
-      // } else {
-      //   const lastRVNo = selectResult[0].RV_No;
-      //   const yearPart = lastRVNo.slice(0, 2);
-      //   const numericPart = parseInt(lastRVNo.slice(3)) + 1;
-      //   const formattedNumericPart = numericPart.toString().padStart(4, "0");
-      //   newRvNo = `${yearPart}/${formattedNumericPart}`;
-      // }
+      if (selectResult && selectResult.length > 0) {
+        const lastRunNo = selectResult[0].Running_No;
+        console.log("lastRunNo", lastRunNo);
+        const numericPart = parseInt(lastRunNo) + 1;
 
-      if (selectResult.length === 0) {
-        newRvNo = `${endYearShort}/J0001`;
-      } else {
-        const lastRVNo = selectResult[0].RV_No;
-        const yearPart = lastRVNo.slice(0, 2);
+        const paddedNumericPart = numericPart.toString().padStart(4, "0");
 
-        const numericPartMatch = lastRVNo.match(/J(\d+)/);
+        newRvNo = `${yearShort}/${prefix}${paddedNumericPart}`;
+        console.log("New RvNo:", newRvNo);
 
-        if (numericPartMatch && numericPartMatch[1]) {
-          const numericPart = parseInt(numericPartMatch[1]);
+        // Update Running_No in magod_setup.magod_runningno
+        const updateRunningNoQuery = `
+          UPDATE magod_setup.magod_runningno
+          SET Running_No = ${numericPart}
+          WHERE SrlType='${srlType}' AND UnitName='${unit}' AND Period='${finYear}';
+        `;
 
-          // Check if the numeric part is a valid integer
-          if (!isNaN(numericPart)) {
-            const incrementedNumericPart = numericPart + 1;
-            const formattedNumericPart = incrementedNumericPart
-              .toString()
-              .padStart(4, "0");
-
-            newRvNo = `${yearPart}/J${formattedNumericPart}`;
-          } else {
-            console.error("Error: Numeric part is not a valid integer.");
+        setupQueryMod(updateRunningNoQuery, (updateError, updateResult) => {
+          if (updateError) {
+            logger.error(updateError);
+            return next(updateResult);
           }
-        } else {
-          console.error("Error: Numeric part could not be extracted.");
-        }
+        });
       }
-
-      console.log("New RVNo", newRvNo);
 
       misQueryMod(
         `UPDATE magodmis.material_receipt_register
@@ -1204,7 +1254,7 @@ pnrdcRouter.post("/cancel", async (req, res, next) => {
                   FROM magodmis.mtrl_returned_details m, magodmis.material_receipt_register m1
                   WHERE m.Rv_SrlId=${val.Rv_SrlId} AND m1.RVId=m.RVId AND m1.RVStatus='Updated'
                 ),
-                0  -- Default value if the subquery result is NULL
+                0  
               )
               WHERE Draft_dc_inv_DetailsID=${val.Rv_SrlId};
               
@@ -1437,6 +1487,113 @@ pnrdcRouter.post("/allCreateNewData", async (req, res, next) => {
             );
           }
         );
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+pnrdcRouter.post("/insertRunNoRow", async (req, res, next) => {
+  const { unit, srlType, ResetPeriod, ResetValue, VoucherNoLength, prefix } =
+    req.body;
+
+  const unitName = `${unit}`;
+  const date = new Date();
+  // const date = new Date("2024-04-01");
+  const year = date.getFullYear();
+  const startYear = date.getMonth() >= 3 ? year : year - 1;
+  const endYear = startYear + 1;
+
+  const firstLetter = unitName.charAt(0).toUpperCase();
+  const financialYearStartDate = new Date(`${startYear}-04-01`);
+  const financialYearEndDate = new Date(`${endYear}-04-01`);
+
+  const formattedStartDate = financialYearStartDate.toISOString().slice(0, 10);
+  const formattedEndDate = financialYearEndDate.toISOString().slice(0, 10);
+
+  const getYear =
+    date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  const yearParts = getYear.split("-");
+  const startYearShort = yearParts[0].slice(-2);
+  const endYearShort = yearParts[1].slice(-2);
+  const finYear = `${startYearShort}/${endYearShort}`;
+
+  console.log("finYear", finYear);
+
+  try {
+    const selectQuery = `
+    SELECT COUNT(Id) FROM magod_setup.magod_runningno  WHERE SrlType='${srlType}'
+    AND UnitName='${unit}' AND Period='${finYear}'
+    `;
+
+    setupQueryMod(selectQuery, (selectError, selectResult) => {
+      if (selectError) {
+        logger.error(selectError);
+        return next(selectResult);
+      }
+
+      const count = selectResult[0]["COUNT(Id)"];
+
+      if (count === 0) {
+        // If count is 0, execute the INSERT query
+        const insertQuery = `
+          INSERT INTO magod_setup.magod_runningno
+          (UnitName, SrlType, ResetPeriod, ResetValue, EffectiveFrom_date, Reset_date, Running_No, Prefix, Length, Period, Running_EffectiveDate)
+          VALUES ('${unit}', '${srlType}', '${ResetPeriod}', ${ResetValue}, '${formattedStartDate}', '${formattedEndDate}',${ResetValue}, '${prefix}', ${VoucherNoLength}, '${finYear}', CurDate());
+        `;
+
+        // Execute the INSERT query
+        setupQueryMod(insertQuery, (insertError, insertResult) => {
+          if (insertError) {
+            logger.error(insertError);
+            return next(insertResult);
+          }
+
+          res.json({ message: "Record inserted successfully." });
+        });
+      } else {
+        res.json({ message: "Record already exists." });
+      }
+    });
+  } catch (error) {
+    console.error("An error occurred:", error);
+    next(error);
+  }
+});
+
+pnrdcRouter.post("/customerCount", async (req, res, next) => {
+  const { custCode } = req.body;
+  try {
+    misQueryMod(
+      `SELECT COUNT(*) AS CustomerCount
+      FROM magodmis.draft_dc_inv_register
+      WHERE DC_InvType = 'ReturnableDC' AND IsDC = 1 AND DCStatus = 'Draft' AND Cust_Code = '${custCode}'
+      GROUP BY Cust_Name;
+      `,
+      (err, data) => {
+        if (err) logger.error(err);
+        // console.log("data", data);
+        res.send(data);
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+pnrdcRouter.post("/updateCount", async (req, res, next) => {
+  const { dcInvNo } = req.body;
+  try {
+    misQueryMod(
+      `SELECT COUNT(CASE WHEN RVStatus = 'Updated' THEN 1 END) AS UpdatedCount
+      FROM magodmis.material_receipt_register m
+      WHERE m.Ref_VrId = ${dcInvNo};
+      `,
+      (err, data) => {
+        if (err) logger.error(err);
+        // console.log("data", data);
+        res.send(data);
       }
     );
   } catch (error) {

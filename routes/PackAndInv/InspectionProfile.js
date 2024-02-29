@@ -1,7 +1,12 @@
 const inspectionProfileRouter = require("express").Router();
 var createError = require("http-errors");
 const { createFolder, copyallfiles } = require("../../helpers/folderhelper");
-const { misQuery, setupQuery, misQueryMod } = require("../../helpers/dbconn");
+const {
+  misQuery,
+  setupQuery,
+  misQueryMod,
+  setupQueryMod,
+} = require("../../helpers/dbconn");
 const req = require("express/lib/request");
 const { sendDueList } = require("../../helpers/sendmail");
 const { logger } = require("../../helpers/logger");
@@ -25,8 +30,9 @@ inspectionProfileRouter.post("/getorderschdata", async (req, res, next) => {
   // let custcode = req.body;
   let cust_code = req.body.custCode;
   let selectedOption = req.body.selectedOption;
+  let selectedType = req.body.SchType;
 
-  //  console.log("custcode", cust_code);
+  // console.log("selectedType", selectedType);
 
   try {
     misQueryMod(
@@ -42,7 +48,7 @@ inspectionProfileRouter.post("/getorderschdata", async (req, res, next) => {
                 OR Schedule_Status LIKE 'Ready'
                 OR Schedule_Status LIKE 'Suspended')
                 AND ScheduleType NOT LIKE 'Combined'
-                AND Type = '${selectedOption}'
+                AND Type = '${selectedType}'
                 AND Cust_code = '${cust_code}'
         ORDER BY ScheduleDate DESC`,
       (err, data) => {
@@ -60,7 +66,7 @@ inspectionProfileRouter.post("/updateSchDetails", async (req, res, next) => {
   // console.log("req_body", req.body);
   for (let i = 0; i < req.body.length; i++) {
     // console.log("req.body[i].QtyProduced", req.body[i].QtyProduced);
-    console.log("req.body[i].QtyCleared", req.body[i].QtyCleared);
+    // console.log("req.body[i].QtyCleared", req.body[i].QtyCleared);
     // console.log("req.body[i].SchDetaildsId", req.body[i].SchDetailsID);
     try {
       misQueryMod(
@@ -905,105 +911,164 @@ inspectionProfileRouter.post("/submitRejectionReport", async (req, res) => {
     let Rej_ReportDate = `${year}-${month}-${day}`;
     // console.log("Rej_ReportDate", typeof Rej_ReportDate);
 
+    const { dcInvNo, unit, srlType, prefix } = req.body;
+
+    const date = new Date();
+    // const date = new Date("2024-04-01");
+    // const year = date.getFullYear();
+
+    const getYear =
+      date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+    const yearParts = getYear.split("-");
+    const startYearShort = yearParts[0].slice(-2);
+    const endYearShort = yearParts[1].slice(-2);
+    const finYear = `${startYearShort}/${endYearShort}`;
+
+    console.log("finYear", finYear);
+
     try {
-      const formattedDate = new Date(Rej_ReportDate)
-        .toISOString()
-        .split("T")[0];
+      const selectQuery = `
+      SELECT * FROM magod_setup.magod_runningno WHERE SrlType='${srlType}' AND UnitName='${unit}' ORDER BY Id DESC LIMIT 1;
+      `;
 
-      const query = `
-        INSERT INTO magodmis.rejectionslist(
-          Rej_ReportNo, RaisedBy, Internal, Rej_ReportDate, RejctionValue, AcceptedValue, OrderScheduleNo, Cust_Code, Cust_Name, ScheduleId, Rej_Status
-        ) VALUES (
-          '${req.body.reportNo}',
-          '${req.body.RaisedBy}',
-          '1',
-          '${formattedDate}',  
-          ${parseFloat(
-            req.body.rejectedValue
-          )},  -- Parse as float for decimal values
-          ${parseFloat(req.body.acceptedValue)},
-          '${req.body.Rejection_Ref}',
-          '${req.body.Cust_Code}',
-          '${req.body.Cust_Name}',
-          ${parseInt(
-            req.body.ScheduleId,
-            10
-          )},  -- Parse as integer for ScheduleId
-          '${req.body.Status}'
-        )`;
+      setupQueryMod(selectQuery, async (selectError, selectResult) => {
+        if (selectError) {
+          logger.error(selectError);
+          return next(selectResult);
+        }
 
-      misQueryMod(query, (err, rejData) => {
-        if (err) {
-          console.error("Error:", err);
-        } else {
-          // console.log("Result:", rejData);
-          const rejId = rejData.insertId;
-          // console.log("1....................rejData.rejId", rejId);
-          for (
-            let i = 0;
-            i < req.body.selectedScheduleDetailsRows.length;
-            i++
-          ) {
-            const element = req.body.selectedScheduleDetailsRows[i];
-            // console.log(rejId);
-            // console.log(element.DwgName);
-            console.log(req.body.QtyRejected[i]);
-            // console.log(req.body.RejectedReason[i]);
-            // console.log(element.SchDetailsID);
+        let newDCNo = "";
 
-            const query1 = `
-                INSERT INTO magodmis.internal_rejectionpartslist (
-                  Rej_Id, Dwg_Name, Qty_Rejected, Rejection_Reason, SchDetailsID
-                ) VALUES (
-               ${parseInt(rejId)},
-              '${element.DwgName}',
-              ${parseInt(req.body.QtyRejected[i])},
-              '${req.body.RejectedReason[i]}',
-              ${parseInt(element.SchDetailsID)}
+        if (selectResult && selectResult.length > 0) {
+          const lastRunNo = selectResult[0].Running_No;
+          const numericPart = parseInt(lastRunNo) + 1;
 
+          const paddedNumericPart = numericPart.toString().padStart(4, "0");
+          // FORMATE -'23/24 / IR / 0001'
+          newDCNo = `${finYear} / ${prefix}${paddedNumericPart}`;
+          console.log("New DCNo:", newDCNo);
+
+          // Update Running_No in magod_setup.magod_runningno
+          const updateRunningNoQuery = `
+            UPDATE magod_setup.magod_runningno
+            SET Running_No = ${numericPart}
+            WHERE SrlType='${srlType}' AND UnitName='${unit}' AND Period='${finYear}';
+          `;
+
+          setupQueryMod(updateRunningNoQuery, (updateError, updateResult) => {
+            if (updateError) {
+              logger.error(updateError);
+              return next(updateResult);
+            }
+          });
+        }
+        try {
+          const formattedDate = new Date(Rej_ReportDate)
+            .toISOString()
+            .split("T")[0];
+
+          const query = `
+            INSERT INTO magodmis.rejectionslist(
+              Rej_ReportNo, RaisedBy, Internal, Rej_ReportDate, RejctionValue, AcceptedValue, OrderScheduleNo, Cust_Code, Cust_Name, ScheduleId, Rej_Status
+            ) VALUES (
+              '${newDCNo}',
+              '${req.body.RaisedBy}',
+              '1',
+              '${formattedDate}',  
+              ${parseFloat(
+                req.body.rejectedValue
+              )},  -- Parse as float for decimal values
+              ${parseFloat(req.body.acceptedValue)},
+              '${req.body.Rejection_Ref}',
+              '${req.body.Cust_Code}',
+              '${req.body.Cust_Name}',
+              ${parseInt(
+                req.body.ScheduleId,
+                10
+              )},  -- Parse as integer for ScheduleId
+              '${req.body.Status}'
             )`;
 
-            misQueryMod(query1, (err, intRejData) => {
-              if (err) {
-                console.error("Error:", err);
-              } else {
-                // console.log("2.......................Result:", intRejData);
-                misQueryMod(
-                  `UPDATE magodmis.orderscheduledetails SET QtyRejected = QtyRejected + ${parseInt(
-                    req.body.QtyRejected[i]
-                  )} WHERE SchDetailsID = ${parseInt(element.SchDetailsID)}`,
-                  (uerr, updateQtyResult) => {
-                    if (uerr) {
-                      console.error("Error:", uerr);
-                    } else {
-                      // res.send(updateQtyResult);
-                      // console.log(
-                      //   "3.......................Update orderscheduledetails result:",
-                      //   updateQtyResult
-                      // );
-                      // misQueryMod(
-                      //   `SELECT * FROM magodmis.rejectionslist r WHERE r.ScheduleId=${req.body.ScheduleId} `,
-                      //   (err, data) => {
-                      //     if (err) {
-                      //       logger.error(err);
-                      //     } else {
-                      //       console.log(
-                      //         "magodmis.rejectionslist data....",
-                      //         data
-                      //       );
-                      //       res.send(data);
-                      //     }
-                      //   }
-                      // );
-                    }
+          misQueryMod(query, (err, rejData) => {
+            if (err) {
+              console.error("Error:", err);
+            } else {
+              // console.log("Result:", rejData);
+              const rejId = rejData.insertId;
+              // console.log("1....................rejData.rejId", rejId);
+              for (
+                let i = 0;
+                i < req.body.selectedScheduleDetailsRows.length;
+                i++
+              ) {
+                const element = req.body.selectedScheduleDetailsRows[i];
+                // console.log(rejId);
+                // console.log(element.DwgName);
+                console.log(req.body.QtyRejected[i]);
+                // console.log(req.body.RejectedReason[i]);
+                // console.log(element.SchDetailsID);
+
+                const query1 = `
+                    INSERT INTO magodmis.internal_rejectionpartslist (
+                      Rej_Id, Dwg_Name, Qty_Rejected, Rejection_Reason, SchDetailsID
+                    ) VALUES (
+                   ${parseInt(rejId)},
+                  '${element.DwgName}',
+                  ${parseInt(req.body.QtyRejected[i])},
+                  '${req.body.RejectedReason[i]}',
+                  ${parseInt(element.SchDetailsID)}
+    
+                )`;
+
+                misQueryMod(query1, (err, intRejData) => {
+                  if (err) {
+                    console.error("Error:", err);
+                  } else {
+                    // console.log("2.......................Result:", intRejData);
+                    misQueryMod(
+                      `UPDATE magodmis.orderscheduledetails SET QtyRejected = QtyRejected + ${parseInt(
+                        req.body.QtyRejected[i]
+                      )} WHERE SchDetailsID = ${parseInt(
+                        element.SchDetailsID
+                      )}`,
+                      (uerr, updateQtyResult) => {
+                        if (uerr) {
+                          console.error("Error:", uerr);
+                        } else {
+                          res.send(updateQtyResult);
+                          console.log(
+                            "3.......................Update orderscheduledetails result:",
+                            updateQtyResult
+                          );
+                          // misQueryMod(
+                          //   `SELECT * FROM magodmis.rejectionslist r WHERE r.ScheduleId=${req.body.ScheduleId} `,
+                          //   (err, data) => {
+                          //     if (err) {
+                          //       logger.error(err);
+                          //     } else {
+                          //       console.log(
+                          //         "magodmis.rejectionslist data....",
+                          //         data
+                          //       );
+                          //       res.send(data);
+                          //     }
+                          //   }
+                          // );
+                        }
+                      }
+                    );
                   }
-                );
+                });
               }
-            });
-          }
+            }
+          });
+        } catch (error) {
+          next(error);
         }
+        // ..............
       });
     } catch (error) {
+      console.error("An error occurred:", error);
       next(error);
     }
   } catch (error) {
@@ -1040,33 +1105,37 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
   // console.log("reqqqq", req.body);
 
   // console.log(
-  //   "req.body.headerData[0].ScheduleDate",
-  //   req.body.headerData[0].ScheduleDate
+  //   "req.body.headerData.ScheduleDate",
+  //   req.body.headerData.ScheduleDate
   // );
 
   const DCStatus = "Draft";
   try {
     misQueryMod(
       `INSERT INTO magodmis.draft_dc_inv_register
-        (ScheduleId, DC_InvType, InvoiceFor, OrderNo, OrderScheduleNo, OrderDate, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, Total_Wt, DCStatus)
+        (ScheduleId, DC_InvType, InvoiceFor, OrderNo, OrderScheduleNo, OrderDate, DC_Date, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, Total_Wt, DCStatus, InspBy, PackedBy, PaymentTerms,BillType,PAN_No)
         VALUES
-        ('${req.body.headerData[0].ScheduleId}', '${
-        req.body.headerData[0].ScheduleType
-      }', '${req.body.headerData[0].Type}', '${
-        req.body.headerData[0].Order_No
-      }', '${req.body.headerData[0].OrdSchNo}', '${
-        req.body.headerData[0].OriginalScheduleDate.split("T")[0]
-      }', '${req.body.headerData[0].Cust_Code}', '${
-        req.body.headerData[0].Cust_name
-      }', '${req.body.headerData[0].Address}', '${
-        req.body.headerData[0].City
-      }', '${req.body.headerData[0].State}', '${
-        req.body.headerData[0].StateId
-      }', '${req.body.headerData[0].Pin_Code}', '${
-        req.body.headerData[0].Delivery ? req.body.headerData[0].Delivery : ""
-      }', '${req.body.headerData[0].GSTNo}', '${
-        req.body.headerData[0].PO
-      }', '0', '${DCStatus}')`,
+        ('${req.body.headerData.ScheduleId}', '${
+        req.body.headerData.ScheduleType
+      }', '${req.body.headerData.Type}', '${req.body.headerData.Order_No}', '${
+        req.body.headerData.OrdSchNo
+      }', '${req.body.headerData.OriginalScheduleDate.split("T")[0]}', now(),'${
+        req.body.headerData.Cust_Code
+      }', '${req.body.headerData.Cust_name}', '${
+        req.body.headerData.Address || ""
+      }', '${req.body.headerData.City || ""}', '${
+        req.body.headerData.State || ""
+      }', '${req.body.headerData.StateId}', '${
+        req.body.headerData.Pin_Code || ""
+      }', '${req.body.headerData.Delivery || ""}', '${
+        req.body.headerData.GSTNo || ""
+      }', '${req.body.headerData.PO || ""}', '0', '${DCStatus}','${
+        req.body.headerData.SalesContact || ""
+      }','${req.body.headerData.Inspected_By || ""}','${
+        req.body.headerData.PaymentTerms || ""
+      }','${req.body.headerData.BillType || ""}','${
+        req.body.headerData.PAN_No || ""
+      }')`,
       (err, registerData) => {
         if (err) {
           console.log("errrr", err);
@@ -1128,10 +1197,10 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
                        ${registerData.insertId}, ${i + 1},  ${
                           element.ScheduleId
                         }, ${element.SchDetailsID}, '${
-                          req.body.headerData[0].Cust_Code
-                        }', '${req.body.headerData[0].Order_No}', '${
+                          req.body.headerData.Cust_Code
+                        }', '${req.body.headerData.Order_No}', '${
                           element.Schedule_Srl
-                        }', '${req.body.headerData[0].OrdSchNo}','${
+                        }', '${req.body.headerData.OrdSchNo}','${
                           element.Dwg_Code
                         }', '${element.DwgName}', '${element.Mtrl_Code}', '${
                           element.Material ? element.Material : ""
@@ -1189,8 +1258,8 @@ inspectionProfileRouter.post("/saveDraftPN", async (req, res, next) => {
   // console.log("reqqqq", req.body);
 
   // console.log(
-  //   "req.body.headerData[0].ScheduleDate",
-  //   req.body.headerData[0].ScheduleDate
+  //   "req.body.headerData.ScheduleDate",
+  //   req.body.headerData.ScheduleDate
   // );
 
   // const DCStatus = "Draft";
@@ -1394,7 +1463,7 @@ inspectionProfileRouter.post(
               INNER JOIN
           magodmis.cust_data ON magodmis.orderschedule.Cust_Code = magodmis.cust_data.Cust_Code
       WHERE
-          magodmis.orderschedule.ScheduleId = ${req.body.scheduleID}`,
+          magodmis.orderschedule.ScheduleId = ${req.body.scheduleID}  `,
         (err, headerData) => {
           if (err) {
             logger.error(err);
@@ -1508,7 +1577,7 @@ inspectionProfileRouter.post(
                                                     logger.error(err);
                                                   } else {
                                                     res.send({
-                                                      headerData: headerData,
+                                                      headerData: headerData[0],
                                                       orderScheduleDetailsData:
                                                         orderScheduleDetailsData,
                                                       allInvDetailsData:
@@ -1636,6 +1705,74 @@ inspectionProfileRouter.post(
     } catch (error) {}
   }
 );
+
+inspectionProfileRouter.post("/insertRunNoRow", async (req, res, next) => {
+  const { unit, srlType, ResetPeriod, ResetValue, VoucherNoLength, prefix } =
+    req.body;
+
+  const unitName = `${unit}`;
+  const date = new Date();
+  // const date = new Date("2024-04-01");
+  const year = date.getFullYear();
+  const startYear = date.getMonth() >= 3 ? year : year - 1;
+  const endYear = startYear + 1;
+
+  const firstLetter = unitName.charAt(0).toUpperCase();
+  const financialYearStartDate = new Date(`${startYear}-04-01`);
+  const financialYearEndDate = new Date(`${endYear}-04-01`);
+
+  const formattedStartDate = financialYearStartDate.toISOString().slice(0, 10);
+  const formattedEndDate = financialYearEndDate.toISOString().slice(0, 10);
+
+  const getYear =
+    date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  const yearParts = getYear.split("-");
+  const startYearShort = yearParts[0].slice(-2);
+  const endYearShort = yearParts[1].slice(-2);
+  const finYear = `${startYearShort}/${endYearShort}`;
+
+  console.log("finYear", finYear);
+
+  try {
+    const selectQuery = `
+    SELECT COUNT(Id) FROM magod_setup.magod_runningno  WHERE SrlType='${srlType}'
+    AND UnitName='${unit}' AND Period='${finYear}'
+    `;
+
+    setupQueryMod(selectQuery, (selectError, selectResult) => {
+      if (selectError) {
+        logger.error(selectError);
+        return next(selectResult);
+      }
+
+      const count = selectResult[0]["COUNT(Id)"];
+
+      if (count === 0) {
+        // If count is 0, execute the INSERT query
+        const insertQuery = `
+          INSERT INTO magod_setup.magod_runningno
+          (UnitName, SrlType, ResetPeriod, ResetValue, EffectiveFrom_date, Reset_date, Running_No, Prefix, Length, Period, Running_EffectiveDate)
+          VALUES ('${unit}', '${srlType}', '${ResetPeriod}', ${ResetValue}, '${formattedStartDate}', '${formattedEndDate}',${ResetValue}, '${prefix}', ${VoucherNoLength}, '${finYear}', CurDate());
+        `;
+
+        // Execute the INSERT query
+        setupQueryMod(insertQuery, (insertError, insertResult) => {
+          if (insertError) {
+            logger.error(insertError);
+            return next(insertResult);
+          }
+
+          res.json({ message: "Record inserted successfully." });
+        });
+      } else {
+        res.json({ message: "Record already exists." });
+      }
+    });
+  } catch (error) {
+    console.error("An error occurred:", error);
+    next(error);
+  }
+});
 module.exports = inspectionProfileRouter;
 
 // for (let i = 0; i < req.body.selectRejRow[i].length; i++) {

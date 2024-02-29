@@ -1,5 +1,10 @@
 const InvoiceRouter = require("express").Router();
-const { misQuery, setupQuery, misQueryMod } = require("../../helpers/dbconn");
+const {
+  misQuery,
+  setupQuery,
+  setupQueryMod,
+  misQueryMod,
+} = require("../../helpers/dbconn");
 const { logger } = require("../../helpers/logger");
 
 InvoiceRouter.post("/getAllCust", async (req, res, next) => {
@@ -66,6 +71,7 @@ InvoiceRouter.get("/getAllStates", async (req, res, next) => {
 });
 
 InvoiceRouter.post("/createPN", async (req, res, next) => {
+  console.log("resiter", req.body.invRegisterData);
   const today = new Date();
   var BillType = "Cash";
   var todayDate = today.toISOString().split("T")[0];
@@ -76,191 +82,430 @@ InvoiceRouter.post("/createPN", async (req, res, next) => {
   if (req.body.invRegisterData.BillType?.length > 0) {
     BillType = req.body.invRegisterData.BillType;
   }
-  const DCStatus = "Packed";
-  try {
-    misQueryMod(
-      `SELECT 
-          DC_No
-      FROM
-          magodmis.draft_dc_inv_register
-      WHERE
-          DC_No IS NOT NULL AND DC_No != 'null'
-              AND DC_No != ''
-              AND DC_No != 'NaN'
-              AND DC_No != 'undefined'
-              AND DC_InvType != 'ReturnableDC'
-      ORDER BY DC_Inv_No DESC`,
-      (err, old_DC_No) => {
-        if (err) logger.error(err);
-        // insert data into register 2023-07-21T09:39:04.886Z 2023-07-21T09:49:50.000Z
-        try {
-          misQueryMod(
-            `insert into magodmis.draft_dc_inv_register(DC_InvType, InvoiceFor, OrderScheduleNo, DC_No, DC_Date, DC_Fin_Year, PymtAmtRecd, PaymentMode, PaymentReceiptDetails, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, PO_Date, Net_Total, TptCharges, Discount, AssessableValue, TaxAmount, Del_Chg, InvTotal, Round_Off, GrandTotal, Total_Wt, DCStatus, DespatchDate, TptMode, VehNo, Remarks, PO_Value, PaymentTerms, BillType) values(
-                '${req.body.invRegisterData.DC_InvType}', '${
-              req.body.invRegisterData.InvoiceFor
-            }', '${req.body.invRegisterData.InvoiceFor}', '${
-              parseInt(old_DC_No[0].DC_No) + 1
-            }', '${todayDate}', 'finyear', '${
-              req.body.invRegisterData.PymtAmtRecd
-            }', '${req.body.invRegisterData.PaymentMode}', '${
-              req.body.invRegisterData.PaymentReceiptDetails
-            }', '${req.body.invRegisterData.Cust_Code}', '${
-              req.body.invRegisterData.Cust_Name
-            }', '${req.body.invRegisterData.Cust_Address}', '${
-              req.body.invRegisterData.Cust_Place
-            }', '${req.body.invRegisterData.Cust_State}', '${
-              req.body.invRegisterData.Cust_StateId
-            }', '${req.body.invRegisterData.PIN_Code}', '${
-              req.body.invRegisterData.Del_Address
-            }', '${req.body.invRegisterData.GSTNo}', '${
-              req.body.invRegisterData.PO_No
-            }', '${todayDate}', '${req.body.invRegisterData.Net_Total}', '${
-              req.body.invRegisterData.TptCharges
-            }', '${req.body.invRegisterData.Discount}', '${
-              req.body.invRegisterData.AssessableValue
-            }', '${req.body.invRegisterData.TaxAmount}', '${
-              req.body.invRegisterData.Del_Chg
-            }', '${req.body.invRegisterData.InvTotal}', '${
-              req.body.invRegisterData.Round_Off
-            }', '${req.body.invRegisterData.GrandTotal}', '${
-              req.body.invRegisterData.Total_Wt || 0.0
-            }', '${DCStatus}', '${dispatchDate}', '${
-              req.body.invRegisterData.TptMode
-            }', '${req.body.invRegisterData.VehNo}', '${
-              req.body.invRegisterData.Remarks || ""
-            }', '${req.body.invRegisterData.PO_Value}', '${
-              req.body.invRegisterData.PaymentTerms || ""
-            }', '${req.body.invRegisterData.BillType || "Cash"}'
-              )
-`,
-            (err, registerData) => {
-              if (err) {
-                console.log("errrr", err);
-              } else {
-                // console.log("registerdata", registerData);
-              }
 
-              // updating the material issue register table if the materials are imported from iv
+  // prefix...srlType
+  const DCStatus = "Packed";
+
+  const { VoucherNoLength, unit, srlType, prefix } = req.body;
+
+  const date = new Date();
+  // const date = new Date("2024-04-01");
+  const year = date.getFullYear();
+
+  const getYear =
+    date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  const yearParts = getYear.split("-");
+  const startYearShort = yearParts[0].slice(-2);
+  const endYearShort = yearParts[1].slice(-2);
+  const finYear = `${startYearShort}/${endYearShort}`;
+
+  console.log("finYear", finYear);
+
+  try {
+    const selectQuery = `
+    SELECT * FROM magod_setup.magod_runningno WHERE SrlType='${srlType}' AND UnitName='${unit}' ORDER BY Id DESC LIMIT 1;
+    `;
+
+    setupQueryMod(selectQuery, async (selectError, selectResult) => {
+      if (selectError) {
+        logger.error(selectError);
+        return next(selectResult);
+      }
+
+      let newDCNo = "";
+
+      if (selectResult && selectResult.length > 0) {
+        const lastRunNo = selectResult[0].Running_No;
+        const numericPart = parseInt(lastRunNo) + 1;
+
+        const paddedNumericPart = numericPart
+          .toString()
+          .padStart(VoucherNoLength, "0");
+
+        // newDCNo = `${prefix}${paddedNumericPart}`;
+        newDCNo = `${paddedNumericPart}`;
+        console.log("New DCNo:", newDCNo);
+
+        // Update Running_No in magod_setup.magod_runningno
+        const updateRunningNoQuery = `
+          UPDATE magod_setup.magod_runningno
+          SET Running_No = ${numericPart}
+          WHERE SrlType='${srlType}' AND UnitName='${unit}' AND Period='${finYear}';
+        `;
+
+        setupQueryMod(updateRunningNoQuery, (updateError, updateResult) => {
+          if (updateError) {
+            logger.error(updateError);
+            return next(updateResult);
+          }
+        });
+      }
+
+      // .......
+      try {
+        misQueryMod(
+          `insert into magodmis.draft_dc_inv_register(DC_InvType, InvoiceFor, OrderScheduleNo, DC_No, DC_Date, DC_Fin_Year, PymtAmtRecd, PaymentMode, PaymentReceiptDetails, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, PO_Date, Net_Total, TptCharges, Discount, AssessableValue, TaxAmount, Del_Chg, InvTotal, Round_Off, GrandTotal, Total_Wt, DCStatus, DespatchDate, TptMode, VehNo, Remarks, PO_Value, PaymentTerms, BillType, PAN_No, Del_ContactName, Del_ContactNo) values(
+        '${req.body.invRegisterData.DC_InvType || ""}', '${
+            req.body.invRegisterData.InvoiceFor || ""
+          }', '${
+            req.body.invRegisterData.InvoiceFor || ""
+          }', '${newDCNo}', '${todayDate}', 'finyear', '${
+            req.body.invRegisterData.PymtAmtRecd || 0.0
+          }', '${req.body.invRegisterData.PaymentMode || ""}', '${
+            req.body.invRegisterData.PaymentReceiptDetails || ""
+          }', '${req.body.invRegisterData.Cust_Code}', '${
+            req.body.invRegisterData.Cust_Name
+          }', '${req.body.invRegisterData.Cust_Address || ""}', '${
+            req.body.invRegisterData.Cust_Place || ""
+          }', '${req.body.invRegisterData.Cust_State || ""}', '${
+            req.body.invRegisterData.Cust_StateId || "00"
+          }', '${req.body.invRegisterData.PIN_Code || ""}', '${
+            req.body.invRegisterData.Del_Address || ""
+          }', '${req.body.invRegisterData.GSTNo || ""}', '${
+            req.body.invRegisterData.PO_No || ""
+          }', '${todayDate}', '${
+            req.body.invRegisterData.Net_Total || 0.0
+          }', '${req.body.invRegisterData.TptCharges || 0.0}', '${
+            req.body.invRegisterData.Discount || 0.0
+          }', '${req.body.invRegisterData.AssessableValue || 0.0}', '${
+            req.body.invRegisterData.TaxAmount || 0.0
+          }', '${req.body.invRegisterData.Del_Chg || 0.0}', '${
+            req.body.invRegisterData.InvTotal || 0.0
+          }', '${req.body.invRegisterData.Round_Off || 0.0}', '${
+            req.body.invRegisterData.GrandTotal || 0.0
+          }', '${
+            req.body.invRegisterData.Total_Wt || 0.0
+          }', '${DCStatus}', '${dispatchDate}', '${
+            req.body.invRegisterData.TptMode || ""
+          }', '${req.body.invRegisterData.VehNo || ""}', '${
+            req.body.invRegisterData.Remarks || ""
+          }', '${req.body.invRegisterData.PO_Value || 0.0}', '${
+            req.body.invRegisterData.PaymentTerms || ""
+          }', '${req.body.invRegisterData.BillType || "Cash"}', '${
+            req.body.invRegisterData.PAN_No || ""
+          }', '${req.body.invRegisterData.Del_ContactName || ""}', '${
+            req.body.invRegisterData.Del_ContactNo || ""
+          }'
+      )
+`,
+          (err, registerData) => {
+            if (err) {
+              console.log("errrr", err);
+            } else {
+              // console.log("registerdata", registerData);
+            }
+
+            // updating the material issue register table if the materials are imported from iv
+            try {
+              misQueryMod(
+                `UPDATE magodmis.material_issue_register
+            SET
+                PkngDcNo = '${newDCNo}',
+                PkngDCDate = NOW(),
+                IVStatus = '${DCStatus}',
+                Dc_ID = '${registerData.insertId}'
+            WHERE
+                (Iv_Id = '${req.body.invRegisterData.Iv_Id}')`,
+
+                (err, updateMtrlIssueRegister) => {
+                  if (err) logger.error(err);
+                }
+              );
+            } catch (error) {
+              next(error);
+            }
+            // insert into detailssssss
+            let flag = 0;
+
+            for (let i = 0; i < req.body.invDetailsData.length; i++) {
+              const element = req.body.invDetailsData[i];
               try {
                 misQueryMod(
-                  `UPDATE magodmis.material_issue_register
-                    SET
-                        PkngDcNo = '${parseInt(old_DC_No[0].DC_No) + 1}',
-                        PkngDCDate = NOW(),
-                        IVStatus = '${DCStatus}',
-                        Dc_ID = '${registerData.insertId}'
-                    WHERE
-                        (Iv_Id = '${req.body.invRegisterData.Iv_Id}')`,
-
-                  (err, updateMtrlIssueRegister) => {
-                    if (err) logger.error(err);
+                  `insert into magodmis.draft_dc_inv_details(DC_Inv_No, DC_Inv_Srl, Cust_Code, Dwg_No, Mtrl, Material, Qty, Unit_Wt, DC_Srl_Wt, Unit_Rate, DC_Srl_Amt, Excise_CL_no, DespStatus) values(${
+                    registerData.insertId
+                  }, ${i + 1}, '${req.body.invRegisterData.Cust_Code}', '${
+                    element.Dwg_No
+                  }', '${element.Mtrl}', '${element.Material}', '${
+                    element.Qty || 0
+                  }', '${element.Unit_Wt || 0.0}', '${
+                    element.DC_Srl_Wt || 0.0
+                  }', '${element.Unit_Rate || 0.0}', '${
+                    element.DC_Srl_Amt || 0.0
+                  }', '${element.Excise_CL_no}', '${DCStatus}')`,
+                  (err, detailsData) => {
+                    if (err) {
+                      console.log("errr", err);
+                    } else {
+                    }
                   }
                 );
               } catch (error) {
                 next(error);
               }
-              // insert into detailssssss
-              let flag = 0;
-
-              for (let i = 0; i < req.body.invDetailsData.length; i++) {
-                const element = req.body.invDetailsData[i];
-                try {
-                  misQueryMod(
-                    `insert into magodmis.draft_dc_inv_details(DC_Inv_No, DC_Inv_Srl, Cust_Code, Dwg_No, Mtrl, Material, Qty, Unit_Wt, DC_Srl_Wt, Unit_Rate, DC_Srl_Amt, Excise_CL_no, DespStatus) values(${
-                      registerData.insertId
-                    }, ${i + 1}, '${req.body.invRegisterData.Cust_Code}', '${
-                      element.Dwg_No
-                    }', '${element.Mtrl}', '${element.Material}', '${
-                      element.Qty
-                    }', '${element.Unit_Wt}', '${element.DC_Srl_Wt}', '${
-                      element.Unit_Rate
-                    }', '${element.DC_Srl_Amt}', '${
-                      element.Excise_CL_no
-                    }', '${DCStatus}')`,
-                    (err, detailsData) => {
-                      if (err) {
-                        console.log("errr", err);
-                      } else {
-                      }
-                    }
-                  );
-                } catch (error) {
-                  next(error);
-                }
-              }
-              if (req.body.invTaxData?.length > 0) {
-                for (let i = 0; i < req.body.invTaxData.length; i++) {
-                  const element = req.body.invTaxData[i];
-                  try {
-                    misQueryMod(
-                      `INSERT INTO magodmis.dc_inv_taxtable (Dc_inv_No, DcTaxID, TaxID, Tax_Name, TaxOn, TaxableAmount, TaxPercent, TaxAmt) values('${
-                        registerData.insertId
-                      }', '${i + 1}', '${element.TaxID}', '${
-                        element.Tax_Name
-                      }', '${element.TaxOn}', '${element.TaxableAmount}', '${
-                        element.TaxPercent
-                      }', '${element.TaxAmt}')`,
-                      (err, taxData) => {
-                        if (err) logger.error(err);
-                      }
-                    );
-                  } catch (error) {
-                    next(error);
-                  }
-                }
-                flag = 1;
-              } else {
-                flag = 1;
-              }
-              if (flag === 1) {
-                try {
-                  misQueryMod(
-                    `SELECT
-                      *,
-                      DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
-                      DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
-                      DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
-                      DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
-                      DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
-                      DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-                      DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate
-                    FROM
-                        magodmis.draft_dc_inv_register
-                      WHERE
-                          magodmis.draft_dc_inv_register.DC_Inv_No = ${registerData?.insertId}`,
-                    (err, invRegisterData) => {
-                      if (err) logger.error(err);
-                      res.send({
-                        flag: 1,
-                        message: "PN Created",
-                        invRegisterData: invRegisterData,
-                      });
-                    }
-                  );
-                } catch (error) {
-                  next(error);
-                }
-              } else if (flag === 0) {
-                res.send({
-                  message: "Error in Backend",
-                  flag: 0,
-                });
-              } else {
-                res.send({
-                  message: "Uncaught Error, Check with backend",
-                  flag: 0,
-                });
-              }
             }
-          );
-        } catch (error) {
-          next(error);
-        }
+            if (req.body.invTaxData?.length > 0) {
+              for (let i = 0; i < req.body.invTaxData.length; i++) {
+                const element = req.body.invTaxData[i];
+                try {
+                  misQueryMod(
+                    `INSERT INTO magodmis.dc_inv_taxtable (Dc_inv_No, DcTaxID, TaxID, Tax_Name, TaxOn, TaxableAmount, TaxPercent, TaxAmt) values('${
+                      registerData.insertId
+                    }', '${i + 1}', '${element.TaxID}', '${
+                      element.Tax_Name
+                    }', '${element.TaxOn}', '${element.TaxableAmount}', '${
+                      element.TaxPercent
+                    }', '${element.TaxAmt}')`,
+                    (err, taxData) => {
+                      if (err) logger.error(err);
+                    }
+                  );
+                } catch (error) {
+                  next(error);
+                }
+              }
+              flag = 1;
+            } else {
+              flag = 1;
+            }
+            if (flag === 1) {
+              try {
+                misQueryMod(
+                  `SELECT
+              *,
+              DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
+              DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
+              DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
+              DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
+              DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
+              DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
+              DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate
+            FROM
+                magodmis.draft_dc_inv_register
+              WHERE
+                  magodmis.draft_dc_inv_register.DC_Inv_No = ${registerData?.insertId}`,
+                  (err, invRegisterData) => {
+                    if (err) logger.error(err);
+                    res.send({
+                      flag: 1,
+                      message: "PN Created",
+                      invRegisterData: invRegisterData,
+                    });
+                  }
+                );
+              } catch (error) {
+                next(error);
+              }
+            } else if (flag === 0) {
+              res.send({
+                message: "Error in Backend",
+                flag: 0,
+              });
+            } else {
+              res.send({
+                message: "Uncaught Error, Check with backend",
+                flag: 0,
+              });
+            }
+          }
+        );
+      } catch (error) {
+        next(error);
       }
-    );
+    });
   } catch (error) {
+    console.error("An error occurred:", error);
     next(error);
   }
+
+  //   try {
+  //     misQueryMod(
+  //       `SELECT
+  //           DC_No
+  //       FROM
+  //           magodmis.draft_dc_inv_register
+  //       WHERE
+  //           DC_No IS NOT NULL AND DC_No != 'null'
+  //               AND DC_No != ''
+  //               AND DC_No != 'NaN'
+  //               AND DC_No != 'undefined'
+  //               AND DC_InvType != 'ReturnableDC'
+  //       ORDER BY DC_Inv_No DESC`,
+  //       (err, old_DC_No) => {
+  //         if (err) logger.error(err);
+  //         // insert data into register 2023-07-21T09:39:04.886Z 2023-07-21T09:49:50.000Z
+
+  // // .......
+  // try {
+  //   misQueryMod(
+  //     `insert into magodmis.draft_dc_inv_register(DC_InvType, InvoiceFor, OrderScheduleNo, DC_No, DC_Date, DC_Fin_Year, PymtAmtRecd, PaymentMode, PaymentReceiptDetails, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, PO_Date, Net_Total, TptCharges, Discount, AssessableValue, TaxAmount, Del_Chg, InvTotal, Round_Off, GrandTotal, Total_Wt, DCStatus, DespatchDate, TptMode, VehNo, Remarks, PO_Value, PaymentTerms, BillType) values(
+  //         '${req.body.invRegisterData.DC_InvType || ""}', '${
+  //       req.body.invRegisterData.InvoiceFor || ""
+  //     }', '${req.body.invRegisterData.InvoiceFor || ""}', '${
+  //       parseInt(old_DC_No[0].DC_No) + 1
+  //     }', '${todayDate}', 'finyear', '${
+  //       req.body.invRegisterData.PymtAmtRecd || 0.0
+  //     }', '${req.body.invRegisterData.PaymentMode || ""}', '${
+  //       req.body.invRegisterData.PaymentReceiptDetails || ""
+  //     }', '${req.body.invRegisterData.Cust_Code}', '${
+  //       req.body.invRegisterData.Cust_Name
+  //     }', '${req.body.invRegisterData.Cust_Address || ""}', '${
+  //       req.body.invRegisterData.Cust_Place || ""
+  //     }', '${req.body.invRegisterData.Cust_State || ""}', '${
+  //       req.body.invRegisterData.Cust_StateId || "00"
+  //     }', '${req.body.invRegisterData.PIN_Code || ""}', '${
+  //       req.body.invRegisterData.Del_Address || ""
+  //     }', '${req.body.invRegisterData.GSTNo || ""}', '${
+  //       req.body.invRegisterData.PO_No || ""
+  //     }', '${todayDate}', '${
+  //       req.body.invRegisterData.Net_Total || 0.0
+  //     }', '${req.body.invRegisterData.TptCharges || 0.0}', '${
+  //       req.body.invRegisterData.Discount || 0.0
+  //     }', '${req.body.invRegisterData.AssessableValue || 0.0}', '${
+  //       req.body.invRegisterData.TaxAmount || 0.0
+  //     }', '${req.body.invRegisterData.Del_Chg || 0.0}', '${
+  //       req.body.invRegisterData.InvTotal || 0.0
+  //     }', '${req.body.invRegisterData.Round_Off || 0.0}', '${
+  //       req.body.invRegisterData.GrandTotal || 0.0
+  //     }', '${
+  //       req.body.invRegisterData.Total_Wt || 0.0
+  //     }', '${DCStatus}', '${dispatchDate}', '${
+  //       req.body.invRegisterData.TptMode || ""
+  //     }', '${req.body.invRegisterData.VehNo || ""}', '${
+  //       req.body.invRegisterData.Remarks || ""
+  //     }', '${req.body.invRegisterData.PO_Value || 0.0}', '${
+  //       req.body.invRegisterData.PaymentTerms || ""
+  //     }', '${req.body.invRegisterData.BillType || "Cash"}'
+  //       )
+  // `,
+  //     (err, registerData) => {
+  //       if (err) {
+  //         console.log("errrr", err);
+  //       } else {
+  //         // console.log("registerdata", registerData);
+  //       }
+
+  //       // updating the material issue register table if the materials are imported from iv
+  //       try {
+  //         misQueryMod(
+  //           `UPDATE magodmis.material_issue_register
+  //             SET
+  //                 PkngDcNo = '${parseInt(old_DC_No[0].DC_No) + 1}',
+  //                 PkngDCDate = NOW(),
+  //                 IVStatus = '${DCStatus}',
+  //                 Dc_ID = '${registerData.insertId}'
+  //             WHERE
+  //                 (Iv_Id = '${req.body.invRegisterData.Iv_Id}')`,
+
+  //           (err, updateMtrlIssueRegister) => {
+  //             if (err) logger.error(err);
+  //           }
+  //         );
+  //       } catch (error) {
+  //         next(error);
+  //       }
+  //       // insert into detailssssss
+  //       let flag = 0;
+
+  //       for (let i = 0; i < req.body.invDetailsData.length; i++) {
+  //         const element = req.body.invDetailsData[i];
+  //         try {
+  //           misQueryMod(
+  //             `insert into magodmis.draft_dc_inv_details(DC_Inv_No, DC_Inv_Srl, Cust_Code, Dwg_No, Mtrl, Material, Qty, Unit_Wt, DC_Srl_Wt, Unit_Rate, DC_Srl_Amt, Excise_CL_no, DespStatus) values(${
+  //               registerData.insertId
+  //             }, ${i + 1}, '${req.body.invRegisterData.Cust_Code}', '${
+  //               element.Dwg_No
+  //             }', '${element.Mtrl}', '${element.Material}', '${
+  //               element.Qty || 0
+  //             }', '${element.Unit_Wt || 0.0}', '${
+  //               element.DC_Srl_Wt || 0.0
+  //             }', '${element.Unit_Rate || 0.0}', '${
+  //               element.DC_Srl_Amt || 0.0
+  //             }', '${element.Excise_CL_no}', '${DCStatus}')`,
+  //             (err, detailsData) => {
+  //               if (err) {
+  //                 console.log("errr", err);
+  //               } else {
+  //               }
+  //             }
+  //           );
+  //         } catch (error) {
+  //           next(error);
+  //         }
+  //       }
+  //       if (req.body.invTaxData?.length > 0) {
+  //         for (let i = 0; i < req.body.invTaxData.length; i++) {
+  //           const element = req.body.invTaxData[i];
+  //           try {
+  //             misQueryMod(
+  //               `INSERT INTO magodmis.dc_inv_taxtable (Dc_inv_No, DcTaxID, TaxID, Tax_Name, TaxOn, TaxableAmount, TaxPercent, TaxAmt) values('${
+  //                 registerData.insertId
+  //               }', '${i + 1}', '${element.TaxID}', '${
+  //                 element.Tax_Name
+  //               }', '${element.TaxOn}', '${element.TaxableAmount}', '${
+  //                 element.TaxPercent
+  //               }', '${element.TaxAmt}')`,
+  //               (err, taxData) => {
+  //                 if (err) logger.error(err);
+  //               }
+  //             );
+  //           } catch (error) {
+  //             next(error);
+  //           }
+  //         }
+  //         flag = 1;
+  //       } else {
+  //         flag = 1;
+  //       }
+  //       if (flag === 1) {
+  //         try {
+  //           misQueryMod(
+  //             `SELECT
+  //               *,
+  //               DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
+  //               DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
+  //               DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
+  //               DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
+  //               DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
+  //               DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
+  //               DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate
+  //             FROM
+  //                 magodmis.draft_dc_inv_register
+  //               WHERE
+  //                   magodmis.draft_dc_inv_register.DC_Inv_No = ${registerData?.insertId}`,
+  //             (err, invRegisterData) => {
+  //               if (err) logger.error(err);
+  //               res.send({
+  //                 flag: 1,
+  //                 message: "PN Created",
+  //                 invRegisterData: invRegisterData,
+  //               });
+  //             }
+  //           );
+  //         } catch (error) {
+  //           next(error);
+  //         }
+  //       } else if (flag === 0) {
+  //         res.send({
+  //           message: "Error in Backend",
+  //           flag: 0,
+  //         });
+  //       } else {
+  //         res.send({
+  //           message: "Uncaught Error, Check with backend",
+  //           flag: 0,
+  //         });
+  //       }
+  //     }
+  //   );
+  // } catch (error) {
+  //   next(error);
+  // }
+
+  //       }
+  //     );
+  //   } catch (error) {
+  //     next(error);
+  //   }
 });
 
 InvoiceRouter.post("/getListData", async (req, res, next) => {
@@ -384,6 +629,7 @@ InvoiceRouter.post("/updateInvoice", async (req, res, next) => {
         PaymentReceiptDetails =  '${
           req.body.invRegisterData.PaymentReceiptDetails
         }',
+        PO_No =  '${req.body.invRegisterData.PO_No}',
         Cust_Address =  '${req.body.invRegisterData.Cust_Address}',
         Cust_Place = '${req.body.invRegisterData.Cust_Place}',
         Cust_State =  '${req.body.invRegisterData.Cust_State}',
@@ -403,6 +649,8 @@ InvoiceRouter.post("/updateInvoice", async (req, res, next) => {
         DespatchDate = '${dispatchDate}',
         TptMode = '${req.body.invRegisterData.TptMode}',
         VehNo = '${req.body.invRegisterData.VehNo}',
+        Del_ContactName = '${req.body.invRegisterData.Del_ContactName || ""}',
+        Del_ContactNo = '${req.body.invRegisterData.Del_ContactNo || ""}',
         Remarks = '${req.body.invRegisterData.Remarks || ""}',
         PO_Value =   '${req.body.invRegisterData.PO_Value}', 
         BillType = '${req.body.invRegisterData.BillType}',
@@ -753,4 +1001,71 @@ InvoiceRouter.post("/getIVDetails", async (req, res, next) => {
   }
 });
 
+InvoiceRouter.post("/insertRunNoRow", async (req, res, next) => {
+  const { unit, srlType, ResetPeriod, ResetValue, VoucherNoLength, prefix } =
+    req.body;
+
+  const unitName = `${unit}`;
+  const date = new Date();
+  // const date = new Date("2024-04-01");
+  const year = date.getFullYear();
+  const startYear = date.getMonth() >= 3 ? year : year - 1;
+  const endYear = startYear + 1;
+
+  const firstLetter = unitName.charAt(0).toUpperCase();
+  const financialYearStartDate = new Date(`${startYear}-04-01`);
+  const financialYearEndDate = new Date(`${endYear}-04-01`);
+
+  const formattedStartDate = financialYearStartDate.toISOString().slice(0, 10);
+  const formattedEndDate = financialYearEndDate.toISOString().slice(0, 10);
+
+  const getYear =
+    date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  const yearParts = getYear.split("-");
+  const startYearShort = yearParts[0].slice(-2);
+  const endYearShort = yearParts[1].slice(-2);
+  const finYear = `${startYearShort}/${endYearShort}`;
+
+  console.log("finYear", finYear);
+
+  try {
+    const selectQuery = `
+    SELECT COUNT(Id) FROM magod_setup.magod_runningno  WHERE SrlType='${srlType}'
+    AND UnitName='${unit}' AND Period='${finYear}'
+    `;
+
+    setupQueryMod(selectQuery, (selectError, selectResult) => {
+      if (selectError) {
+        logger.error(selectError);
+        return next(selectResult);
+      }
+
+      const count = selectResult[0]["COUNT(Id)"];
+
+      if (count === 0) {
+        // If count is 0, execute the INSERT query
+        const insertQuery = `
+          INSERT INTO magod_setup.magod_runningno
+          (UnitName, SrlType, ResetPeriod, ResetValue, EffectiveFrom_date, Reset_date, Running_No, Prefix, Length, Period, Running_EffectiveDate)
+          VALUES ('${unit}', '${srlType}', '${ResetPeriod}', ${ResetValue}, '${formattedStartDate}', '${formattedEndDate}',${ResetValue}, '${prefix}', ${VoucherNoLength}, '${finYear}', CurDate());
+        `;
+
+        // Execute the INSERT query
+        setupQueryMod(insertQuery, (insertError, insertResult) => {
+          if (insertError) {
+            logger.error(insertError);
+            return next(insertResult);
+          }
+
+          res.json({ message: "Record inserted successfully." });
+        });
+      } else {
+        res.json({ message: "Record already exists." });
+      }
+    });
+  } catch (error) {
+    console.error("An error occurred:", error);
+    next(error);
+  }
+});
 module.exports = InvoiceRouter;

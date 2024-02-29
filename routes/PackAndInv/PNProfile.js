@@ -44,16 +44,20 @@ pnProfileRouter.post("/pnprofileinvoices", async (req, res, next) => {
 pnProfileRouter.post("/aboutInvoicePN", async (req, res, next) => {
   try {
     misQueryMod(
-      `SELECT
+      `SELECT 
           *,
           DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
           DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
           DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
           DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-          DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate
-        FROM
+          DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate,
+          magodmis.orderschedule.ScheduleId,
+          magodmis.orderschedule.Special_Instructions
+      FROM
           magodmis.draft_dc_inv_register
-        WHERE
+              INNER JOIN
+          magodmis.orderschedule ON magodmis.draft_dc_inv_register.ScheduleId = magodmis.orderschedule.ScheduleId
+      WHERE
           DC_Inv_No = ${req.body.DCInvNo}`,
       (err, registerData) => {
         if (err) logger.error(err);
@@ -102,18 +106,93 @@ pnProfileRouter.post("/aboutInvoicePN", async (req, res, next) => {
 });
 
 pnProfileRouter.post("/getTaxData", async (req, res, next) => {
+  // get the cust details
   try {
     misQueryMod(
-      `SELECT
-        *
-      FROM
-        magod_setup.taxdb
-      WHERE
-        TaxPrintName != 'Income Tax'
-      ORDER BY Tax_Percent`,
-      (err, data) => {
-        if (err) logger.error(err);
-        res.send(data);
+      `SELECT * FROM magodmis.cust_data where Cust_Code =${req.body.Cust_Code}`,
+      (err, custData) => {
+        if (err) {
+          logger.error(err);
+        } else {
+          // console.log("Cust_Code", req.body);
+          // console.log("custData[0].StateId", custData[0].StateId);
+          let query = "";
+          // console.log("custData", custData[0]);
+          if (custData[0].IsGovtOrg) {
+            // console.log("IsGovtOrg");
+            query = `SELECT 
+                          *
+                      FROM
+                          magod_setup.taxdb
+                      WHERE
+                          EffectiveTO >= NOW() AND TaxID IS NULL`;
+          } else if (custData[0].IsForiegn) {
+            // console.log("IsForiegn");
+            query = `SELECT 
+                          *
+                      FROM
+                          magod_setup.taxdb
+                      WHERE
+                          EffectiveTO >= NOW() AND IGST != 0 
+                      ORDER BY TaxName DESC
+                          `;
+          } else if (
+            custData[0].GSTNo === null ||
+            custData[0].GSTNo === undefined ||
+            custData[0].GSTNo === "null" ||
+            custData[0].GSTNo === "" ||
+            custData[0].GSTNo.length === 0
+          ) {
+            // console.log("GSTNo");
+            query = `SELECT 
+                          *
+                      FROM
+                          magod_setup.taxdb
+                      WHERE
+                          EffectiveTO >= NOW() AND IGST = 0
+                              AND UnderGroup != 'INCOMETAX'`;
+          } else if (
+            parseInt(req.body.unitStateID) != parseInt(custData[0].StateId)
+          ) {
+            // console.log("unitStateID");
+            query = `SELECT 
+                          *
+                      FROM
+                          magod_setup.taxdb
+                      WHERE
+                          EffectiveTO >= NOW() AND IGST != 0
+                              AND UnderGroup != 'INCOMETAX'`;
+          } else if (req.body.unitGST === custData[0].GSTNo) {
+            // console.log("unitGST");
+            query = `SELECT 
+                          *
+                      FROM
+                          magod_setup.taxdb
+                      WHERE
+                          EffectiveTO >= NOW() AND TaxID IS NULL`;
+          } else {
+            // console.log("else");
+            query = `SELECT 
+                          *
+                      FROM
+                          magod_setup.taxdb
+                      WHERE
+                          EffectiveTO >= NOW() AND IGST = 0
+                              AND UnderGroup != 'INCOMETAX'`;
+          }
+
+          try {
+            misQueryMod(query, (err, data) => {
+              if (err) logger.error(err);
+              res.send(data);
+              // console.log("data", data);
+              // console.log("query", query);
+            });
+          } catch (error) {
+            next(error);
+          }
+        }
+        // res.send(data);
       }
     );
   } catch (error) {
@@ -156,7 +235,13 @@ pnProfileRouter.post("/updateRatesPN", async (req, res, next) => {
         `UPDATE magodmis.draft_dc_inv_details
             SET
                 JW_Rate = ${element.JW_Rate},
-                Mtrl_rate = ${element.Mtrl_rate}
+                Mtrl_rate = ${element.Mtrl_rate},
+                Unit_Rate = ${element.Unit_Rate},
+                DC_Srl_Amt = ${
+                  parseInt(element.Qty) *
+                  parseFloat(element.Unit_Rate).toFixed(2)
+                }
+
             WHERE
                 Draft_dc_inv_DetailsID = ${element.Draft_dc_inv_DetailsID}`,
         (err, response) => {
@@ -182,6 +267,12 @@ pnProfileRouter.post("/updatePNProfileData", async (req, res, next) => {
     misQueryMod(
       `UPDATE magodmis.draft_dc_inv_register
         SET
+          PymtAmtRecd = '${req.body.invRegisterData.PymtAmtRecd || ""}',
+          PaymentMode =  '${req.body.invRegisterData.PaymentMode || ""}',
+          PaymentReceiptDetails =  '${
+            req.body.invRegisterData.PaymentReceiptDetails || ""
+          }',
+          PO_No = '${req.body.invRegisterData.PO_No || ""}',
           Cust_Address = '${req.body.invRegisterData.Cust_Address || ""}',
           Del_Address = '${req.body.invRegisterData.Del_Address || ""}',
           Cust_Place = '${req.body.invRegisterData.Cust_Place || ""}',
@@ -190,6 +281,8 @@ pnProfileRouter.post("/updatePNProfileData", async (req, res, next) => {
           DespatchDate = '${dispatchDate}',
           TptMode = '${req.body.invRegisterData.TptMode || ""}',
           VehNo = '${req.body.invRegisterData.VehNo || ""}',
+          Del_ContactName = '${req.body.invRegisterData.Del_ContactName || ""}',
+          Del_ContactNo = '${req.body.invRegisterData.Del_ContactNo || ""}',
           Net_Total = '${parseFloat(req.body.invRegisterData.Net_Total).toFixed(
             2
           )}',
@@ -217,11 +310,23 @@ pnProfileRouter.post("/updatePNProfileData", async (req, res, next) => {
       (err, resp) => {
         if (err) {
           console.log("error in updatePNProfileData", err);
+          if (err) logger.error(err);
           res.send({
             status: 0,
             comment: "Some unexpected error came in backend.",
           });
         } else {
+          // update orderschedule ...
+          try {
+            misQueryMod(
+              `UPDATE magodmis.orderschedule SET Special_Instructions = '${req.body.invRegisterData.Special_Instructions}' WHERE (ScheduleId = ${req.body.invRegisterData.ScheduleId})`,
+              (err, delTax) => {
+                if (err) logger.error(err);
+              }
+            );
+          } catch (error) {
+            next(error);
+          }
           try {
             misQueryMod(
               `DELETE FROM magodmis.dc_inv_taxtable WHERE (Dc_inv_No = ${req.body.invRegisterData.DC_Inv_No})`,
