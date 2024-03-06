@@ -114,12 +114,8 @@ pnProfileRouter.post("/getTaxData", async (req, res, next) => {
         if (err) {
           logger.error(err);
         } else {
-          // console.log("Cust_Code", req.body);
-          // console.log("custData[0].StateId", custData[0].StateId);
           let query = "";
-          // console.log("custData", custData[0]);
           if (custData[0].IsGovtOrg) {
-            // console.log("IsGovtOrg");
             query = `SELECT 
                           *
                       FROM
@@ -127,7 +123,6 @@ pnProfileRouter.post("/getTaxData", async (req, res, next) => {
                       WHERE
                           EffectiveTO >= NOW() AND TaxID IS NULL`;
           } else if (custData[0].IsForiegn) {
-            // console.log("IsForiegn");
             query = `SELECT 
                           *
                       FROM
@@ -143,7 +138,6 @@ pnProfileRouter.post("/getTaxData", async (req, res, next) => {
             custData[0].GSTNo === "" ||
             custData[0].GSTNo.length === 0
           ) {
-            // console.log("GSTNo");
             query = `SELECT 
                           *
                       FROM
@@ -154,7 +148,6 @@ pnProfileRouter.post("/getTaxData", async (req, res, next) => {
           } else if (
             parseInt(req.body.unitStateID) != parseInt(custData[0].StateId)
           ) {
-            // console.log("unitStateID");
             query = `SELECT 
                           *
                       FROM
@@ -171,7 +164,6 @@ pnProfileRouter.post("/getTaxData", async (req, res, next) => {
                       WHERE
                           EffectiveTO >= NOW() AND TaxID IS NULL`;
           } else {
-            // console.log("else");
             query = `SELECT 
                           *
                       FROM
@@ -185,14 +177,11 @@ pnProfileRouter.post("/getTaxData", async (req, res, next) => {
             misQueryMod(query, (err, data) => {
               if (err) logger.error(err);
               res.send(data);
-              // console.log("data", data);
-              // console.log("query", query);
             });
           } catch (error) {
             next(error);
           }
         }
-        // res.send(data);
       }
     );
   } catch (error) {
