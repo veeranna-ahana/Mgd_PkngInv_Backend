@@ -1264,18 +1264,15 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
 });
 
 inspectionProfileRouter.post("/saveDraftPN", async (req, res, next) => {
-  // console.log("reqqqq", req.body);
+  let netTotal = 0;
 
-  // console.log(
-  //   "req.body.headerData.ScheduleDate",
-  //   req.body.headerData.ScheduleDate
-  // );
-
-  // const DCStatus = "Draft";
-
-  // let flag = [];
   for (let i = 0; i < req.body.invDetailsData.length; i++) {
     const element = req.body.invDetailsData[i];
+
+    netTotal =
+      netTotal +
+      parseFloat(element.Qty || 0) *
+        (parseFloat(element.JW_Rate || 0) + parseFloat(element.Mtrl_rate || 0));
 
     try {
       misQueryMod(
@@ -1301,12 +1298,25 @@ inspectionProfileRouter.post("/saveDraftPN", async (req, res, next) => {
     }
   }
 
-  // console.log("flag...", flag);
-
-  res.send({
-    flag: 1,
-    message: "Update draft PN successful",
-  });
+  try {
+    misQueryMod(
+      `UPDATE magodmis.draft_dc_inv_register SET Net_Total = '${parseFloat(
+        netTotal || 0
+      )}' WHERE (DC_Inv_No = '${req.body.invDetailsData[0].DC_Inv_No}')`,
+      (err, updateRegister) => {
+        if (err) {
+          console.log("errrr", err);
+        } else {
+          res.send({
+            flag: 1,
+            message: "Update draft PN successful",
+          });
+        }
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
 });
 
 inspectionProfileRouter.post("/preparePN", async (req, res, next) => {
