@@ -1102,18 +1102,25 @@ inspectionProfileRouter.post("/deleteDraftPN", (req, res) => {
 });
 
 inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
-  // console.log("reqqqq", req.body);
+  let netTotal = 0;
+  for (let i = 0; i < req.body.rowsForCreateDraftPN.length; i++) {
+    const element = req.body.rowsForCreateDraftPN[i];
+    let qty =
+      parseInt(element.QtyCleared) -
+      parseInt(element.QtyPacked) -
+      parseInt(element.InDraftPN);
 
-  // console.log(
-  //   "req.body.headerData.ScheduleDate",
-  //   req.body.headerData.ScheduleDate
-  // );
+    netTotal =
+      netTotal +
+      parseFloat(qty) *
+        (parseFloat(element.JWCost || 0) + parseFloat(element.MtrlCost || 0));
+  }
 
   const DCStatus = "Draft";
   try {
     misQueryMod(
       `INSERT INTO magodmis.draft_dc_inv_register
-        (ScheduleId, DC_InvType, InvoiceFor, OrderNo, OrderScheduleNo, OrderDate, DC_Date, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, Total_Wt, DCStatus, InspBy, PackedBy, PaymentTerms,BillType,PAN_No)
+        (ScheduleId, DC_InvType, InvoiceFor, OrderNo, OrderScheduleNo, OrderDate, DC_Date, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, Net_Total, Total_Wt, DCStatus, InspBy, PackedBy, PaymentTerms,BillType,PAN_No)
         VALUES
         ('${req.body.headerData.ScheduleId}', '${
         req.body.headerData.ScheduleType
@@ -1129,7 +1136,9 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
         req.body.headerData.Pin_Code || ""
       }', '${req.body.headerData.Delivery || ""}', '${
         req.body.headerData.GSTNo || ""
-      }', '${req.body.headerData.PO || ""}', '0', '${DCStatus}','${
+      }', '${req.body.headerData.PO || ""}', '${parseFloat(
+        netTotal || 0
+      ).toFixed(2)}', '0', '${DCStatus}','${
         req.body.headerData.SalesContact || ""
       }','${req.body.headerData.Inspected_By || ""}','${
         req.body.headerData.PaymentTerms || ""
@@ -1146,7 +1155,7 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
           // fetching material data for excise
           try {
             misQueryMod(
-              `SELECT 
+              `SELECT
                   *
                 FROM
                   magodmis.mtrl_typeslist
