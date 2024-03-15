@@ -775,13 +775,13 @@ InvoiceRouter.post("/getIVDetails", async (req, res, next) => {
                       Dwg_No: element.Material + " Scrap",
                       Mtrl: element.Material,
                       Material: element.Material,
-                      Qty: element.Qty,
+                      Qty: parseFloat(element.TotalWeight).toFixed(2),
                       Unit_Wt: 1,
                       Excise_CL_no:
                         findExciseFromMaterial(element.Material)?.length > 0
                           ? findExciseFromMaterial(element.Material)
                           : "",
-                      DC_Srl_Wt: element.Qty,
+                      DC_Srl_Wt: parseFloat(element.TotalWeight).toFixed(2),
                       Unit_Rate: 0,
                       DC_Srl_Amt: 0,
                       PkngLevel: "Pkng1",
@@ -793,7 +793,7 @@ InvoiceRouter.post("/getIVDetails", async (req, res, next) => {
                   flag: 1,
                   message: "Import from IV Successfully",
                   detailsData: detailsData,
-                  Iv_Id: ivDetails[0].Iv_Id,
+                  Iv_Id: ivDetails[0]?.Iv_Id || "",
                 });
               }
             );
