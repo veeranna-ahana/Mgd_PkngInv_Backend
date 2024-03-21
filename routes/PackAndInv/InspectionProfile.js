@@ -1218,7 +1218,7 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
                         ).toFixed(2)}, ${element.UnitPrice}, ${(
                           parseFloat(qtyForDraft) *
                           parseFloat(element.UnitPrice)
-                        ).toFixed(2)}, '${excise}', '${DCStatus}', '${
+                        ).toFixed(2)}, '${excise || ""}', '${DCStatus}', '${
                           element.PackingLevel
                         }', '${element.InspLevel}',
                            ${parseFloat(element.MtrlCost).toFixed(
