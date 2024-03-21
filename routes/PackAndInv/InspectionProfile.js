@@ -1116,6 +1116,7 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
         (parseFloat(element.JWCost || 0) + parseFloat(element.MtrlCost || 0));
   }
 
+  // '${req.body.headerData.Delivery || ""}'
   const DCStatus = "Draft";
   try {
     misQueryMod(
@@ -1134,11 +1135,9 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
         req.body.headerData.State || ""
       }', '${req.body.headerData.StateId}', '${
         req.body.headerData.Pin_Code || ""
-      }', '${req.body.headerData.Delivery || ""}', '${
-        req.body.headerData.GSTNo || ""
-      }', '${req.body.headerData.PO || ""}', '${parseFloat(
-        netTotal || 0
-      ).toFixed(2)}', '0', '${DCStatus}','${
+      }', 'Ex Factory', '${req.body.headerData.GSTNo || ""}', '${
+        req.body.headerData.PO || ""
+      }', '${parseFloat(netTotal || 0).toFixed(2)}', '0', '${DCStatus}','${
         req.body.headerData.SalesContact || ""
       }','${req.body.headerData.Inspected_By || ""}','${
         req.body.headerData.PaymentTerms || ""
