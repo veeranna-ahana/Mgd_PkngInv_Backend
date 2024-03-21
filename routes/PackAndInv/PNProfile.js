@@ -308,7 +308,9 @@ pnProfileRouter.post("/updatePNProfileData", async (req, res, next) => {
           // update orderschedule ...
           try {
             misQueryMod(
-              `UPDATE magodmis.orderschedule SET Special_Instructions = '${req.body.invRegisterData.Special_Instructions}' WHERE (ScheduleId = ${req.body.invRegisterData.ScheduleId})`,
+              `UPDATE magodmis.orderschedule SET Special_Instructions = '${
+                req.body.invRegisterData.Special_Instructions || ""
+              }' WHERE (ScheduleId = ${req.body.invRegisterData.ScheduleId})`,
               (err, delTax) => {
                 if (err) logger.error(err);
               }
