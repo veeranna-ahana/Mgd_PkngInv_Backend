@@ -71,33 +71,52 @@ InvoiceRouter.get("/getAllStates", async (req, res, next) => {
 });
 
 InvoiceRouter.post("/createPN", async (req, res, next) => {
-  console.log("resiter", req.body.invRegisterData);
-  const today = new Date();
-  var BillType = "Cash";
-  var todayDate = today.toISOString().split("T")[0];
-  var dispatchDate = todayDate;
-  if (req.body.invRegisterData.DespatchDate.length > 0) {
-    dispatchDate = req.body.invRegisterData?.DespatchDate;
-  }
-  if (req.body.invRegisterData.BillType?.length > 0) {
-    BillType = req.body.invRegisterData.BillType;
-  }
-  const DCStatus = "Packed";
-
   const { VoucherNoLength, unit, srlType, prefix } = req.body;
 
-  const date = new Date();
+  const DCStatus = "Packed";
 
-  const year = date.getFullYear();
+  var BillType = "Cash";
+  // if (req.body.invRegisterData.BillType?.length > 0) {
+  //   BillType = req.body.invRegisterData.BillType;
+  // }
 
+  const todayDate = new Date();
+
+  let year = todayDate.getFullYear();
+  let month = todayDate.getMonth() + 1;
+  let datee = todayDate.getDate();
+  let hour = todayDate.getHours();
+  let mins = todayDate.getMinutes();
+
+  let formatedTodayDate = `${year}-${month < 10 ? "0" + month : month}-${
+    datee < 10 ? "0" + datee : datee
+  }T${hour < 10 ? "0" + hour : hour}:${mins < 10 ? "0" + mins : mins}`;
+
+  dispatchDate = req.body.invRegisterData.DespatchDate || formatedTodayDate;
+
+  var DC_Date = todayDate.toISOString().split("T")[0];
+
+  // console.log("resiter", req.body.invRegisterData);
+  // const today = new Date();
+  // var todayDate = today.toISOString().split("T")[0];
+  // var dispatchDate = todayDate;
+  // if (req.body.invRegisterData.DespatchDate.length > 0) {
+  //   dispatchDate = req.body.invRegisterData?.DespatchDate;
+  // }
+
+  // const todayDate = new Date();
+
+  // const year = todayDate.getFullYear();
+
+  // fin year
   const getYear =
-    date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+    todayDate.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
   const yearParts = getYear.split("-");
   const startYearShort = yearParts[0].slice(-2);
   const endYearShort = yearParts[1].slice(-2);
   const finYear = `${startYearShort}/${endYearShort}`;
 
-  console.log("finYear", finYear);
+  // console.log("finYear", finYear);
 
   try {
     const selectQuery = `
@@ -121,7 +140,7 @@ InvoiceRouter.post("/createPN", async (req, res, next) => {
           .padStart(VoucherNoLength, "0");
 
         newDCNo = `${paddedNumericPart}`;
-        console.log("New DCNo:", newDCNo);
+        // console.log("New DCNo:", newDCNo);
 
         // Update Running_No in magod_setup.magod_runningno
         const updateRunningNoQuery = `
@@ -146,7 +165,7 @@ InvoiceRouter.post("/createPN", async (req, res, next) => {
             req.body.invRegisterData.InvoiceFor || ""
           }', '${
             req.body.invRegisterData.InvoiceFor || ""
-          }', '${newDCNo}', '${todayDate}', 'finyear', '${
+          }', '${newDCNo}', '${DC_Date}', '${finYear}', '${
             req.body.invRegisterData.PymtAmtRecd || 0.0
           }', '${req.body.invRegisterData.PaymentMode || ""}', '${
             req.body.invRegisterData.PaymentReceiptDetails || ""
@@ -160,17 +179,15 @@ InvoiceRouter.post("/createPN", async (req, res, next) => {
             req.body.invRegisterData.Del_Address || ""
           }', '${req.body.invRegisterData.GSTNo || ""}', '${
             req.body.invRegisterData.PO_No || ""
-          }', '${todayDate}', '${
-            req.body.invRegisterData.Net_Total || 0.0
-          }', '${req.body.invRegisterData.TptCharges || 0.0}', '${
-            req.body.invRegisterData.Discount || 0.0
-          }', '${req.body.invRegisterData.AssessableValue || 0.0}', '${
-            req.body.invRegisterData.TaxAmount || 0.0
-          }', '${req.body.invRegisterData.Del_Chg || 0.0}', '${
-            req.body.invRegisterData.InvTotal || 0.0
-          }', '${req.body.invRegisterData.Round_Off || 0.0}', '${
-            req.body.invRegisterData.GrandTotal || 0.0
-          }', '${
+          }', '${DC_Date}', '${req.body.invRegisterData.Net_Total || 0.0}', '${
+            req.body.invRegisterData.TptCharges || 0.0
+          }', '${req.body.invRegisterData.Discount || 0.0}', '${
+            req.body.invRegisterData.AssessableValue || 0.0
+          }', '${req.body.invRegisterData.TaxAmount || 0.0}', '${
+            req.body.invRegisterData.Del_Chg || 0.0
+          }', '${req.body.invRegisterData.InvTotal || 0.0}', '${
+            req.body.invRegisterData.Round_Off || 0.0
+          }', '${req.body.invRegisterData.GrandTotal || 0.0}', '${
             req.body.invRegisterData.Total_Wt || 0.0
           }', '${DCStatus}', '${dispatchDate}', '${
             req.body.invRegisterData.TptMode || ""
@@ -178,7 +195,7 @@ InvoiceRouter.post("/createPN", async (req, res, next) => {
             req.body.invRegisterData.Remarks || ""
           }', '${req.body.invRegisterData.PO_Value || 0.0}', '${
             req.body.invRegisterData.PaymentTerms || ""
-          }', '${req.body.invRegisterData.BillType || "Cash"}', '${
+          }', '${req.body.invRegisterData.BillType || BillType}', '${
             req.body.invRegisterData.PAN_No || ""
           }', '${req.body.invRegisterData.Del_ContactName || ""}', '${
             req.body.invRegisterData.Del_ContactNo || ""
@@ -269,16 +286,16 @@ InvoiceRouter.post("/createPN", async (req, res, next) => {
                 misQueryMod(
                   `SELECT
                       *,
-                      DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
+                      DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
                       DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
                       DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
                       DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
                       DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
                       DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-                      DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate
+                      DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate
                     FROM
-                        magodmis.draft_dc_inv_register
-                      WHERE
+                      magodmis.draft_dc_inv_register
+                    WHERE
                           magodmis.draft_dc_inv_register.DC_Inv_No = ${registerData?.insertId}`,
                   (err, invRegisterData) => {
                     if (err) logger.error(err);
@@ -343,19 +360,20 @@ InvoiceRouter.post("/invoiceDetails", async (req, res, next) => {
       misQueryMod(
         `SELECT
             *,
-            DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
+            DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
             DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
             DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
             DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
             DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
             DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-            DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate
+            DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate
           FROM
             magodmis.draft_dc_inv_register
           WHERE
             DC_Inv_No = ${req.body.DCInvNo}`,
         (err, registerData) => {
           if (err) logger.error(err);
+
           try {
             misQueryMod(
               `SELECT
@@ -421,12 +439,27 @@ InvoiceRouter.post("/getTaxDataInvoice", async (req, res, next) => {
 
 InvoiceRouter.post("/updateInvoice", async (req, res, next) => {
   // console.log("reeeeeee", req.body);
-  const today = new Date();
-  var todayDate = today.toISOString().split("T")[0];
-  var dispatchDate = todayDate;
-  if (req.body.invRegisterData.DespatchDate?.length > 0) {
-    dispatchDate = req.body.invRegisterData?.DespatchDate?.split("T")[0];
-  }
+
+  const todayDate = new Date();
+
+  let year = todayDate.getFullYear();
+  let month = todayDate.getMonth() + 1;
+  let datee = todayDate.getDate();
+  let hour = todayDate.getHours();
+  let mins = todayDate.getMinutes();
+
+  let formatedTodayDate = `${year}-${month < 10 ? "0" + month : month}-${
+    datee < 10 ? "0" + datee : datee
+  }T${hour < 10 ? "0" + hour : hour}:${mins < 10 ? "0" + mins : mins}`;
+
+  dispatchDate = req.body.invRegisterData.DespatchDate || formatedTodayDate;
+
+  // const today = new Date();
+  // var todayDate = today.toISOString().split("T")[0];
+  // var dispatchDate = todayDate;
+  // if (req.body.invRegisterData.DespatchDate?.length > 0) {
+  //   dispatchDate = req.body.invRegisterData?.DespatchDate?.split("T")[0];
+  // }
   try {
     misQueryMod(
       `UPDATE magodmis.draft_dc_inv_register
