@@ -46,11 +46,11 @@ pnProfileRouter.post("/aboutInvoicePN", async (req, res, next) => {
     misQueryMod(
       `SELECT 
           *,
-          DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
+          DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
           DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
           DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
           DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-          DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate,
+          DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate,
           magodmis.orderschedule.ScheduleId,
           magodmis.orderschedule.Special_Instructions
       FROM
@@ -245,12 +245,28 @@ pnProfileRouter.post("/updateRatesPN", async (req, res, next) => {
 });
 
 pnProfileRouter.post("/updatePNProfileData", async (req, res, next) => {
-  const today = new Date();
-  var todayDate = today.toISOString().split("T")[0];
-  var dispatchDate = todayDate;
-  if (req.body.invRegisterData.DespatchDate?.length > 0) {
-    dispatchDate = req.body.invRegisterData?.DespatchDate?.split("T")[0];
-  }
+  // console.log("reeeeeee", req.body);
+
+  const todayDate = new Date();
+
+  let year = todayDate.getFullYear();
+  let month = todayDate.getMonth() + 1;
+  let datee = todayDate.getDate();
+  let hour = todayDate.getHours();
+  let mins = todayDate.getMinutes();
+
+  let formatedTodayDate = `${year}-${month < 10 ? "0" + month : month}-${
+    datee < 10 ? "0" + datee : datee
+  }T${hour < 10 ? "0" + hour : hour}:${mins < 10 ? "0" + mins : mins}`;
+
+  dispatchDate = req.body.invRegisterData.DespatchDate || formatedTodayDate;
+
+  // const today = new Date();
+  // var todayDate = today.toISOString().split("T")[0];
+  // var dispatchDate = todayDate;
+  // if (req.body.invRegisterData.DespatchDate?.length > 0) {
+  //   dispatchDate = req.body.invRegisterData?.DespatchDate?.split("T")[0];
+  // }
 
   try {
     misQueryMod(

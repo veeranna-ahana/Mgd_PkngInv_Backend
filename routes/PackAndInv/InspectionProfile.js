@@ -946,7 +946,7 @@ inspectionProfileRouter.post("/submitRejectionReport", async (req, res) => {
           const paddedNumericPart = numericPart.toString().padStart(4, "0");
           // FORMATE -'23/24 / IR / 0001'
           newDCNo = `${finYear} / ${prefix}${paddedNumericPart}`;
-          console.log("New DCNo:", newDCNo);
+          // console.log("New DCNo:", newDCNo);
 
           // Update Running_No in magod_setup.magod_runningno
           const updateRunningNoQuery = `
@@ -1004,7 +1004,7 @@ inspectionProfileRouter.post("/submitRejectionReport", async (req, res) => {
                 const element = req.body.selectedScheduleDetailsRows[i];
                 // console.log(rejId);
                 // console.log(element.DwgName);
-                console.log(req.body.QtyRejected[i]);
+                // console.log(req.body.QtyRejected[i]);
                 // console.log(req.body.RejectedReason[i]);
                 // console.log(element.SchDetailsID);
 
@@ -1036,10 +1036,10 @@ inspectionProfileRouter.post("/submitRejectionReport", async (req, res) => {
                           console.error("Error:", uerr);
                         } else {
                           res.send(updateQtyResult);
-                          console.log(
-                            "3.......................Update orderscheduledetails result:",
-                            updateQtyResult
-                          );
+                          // console.log(
+                          //   "3.......................Update orderscheduledetails result:",
+                          //   updateQtyResult
+                          // );
                           // misQueryMod(
                           //   `SELECT * FROM magodmis.rejectionslist r WHERE r.ScheduleId=${req.body.ScheduleId} `,
                           //   (err, data) => {
@@ -1148,26 +1148,22 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
         if (err) {
           console.log("errrr", err);
         } else {
-          // console.log("registerdata", registerData);
-          // res.send(registerData);
-
           // fetching material data for excise
           try {
             misQueryMod(
-              `SELECT
-                  *
+              `SELECT 
+                    *
                 FROM
-                  magodmis.mtrl_typeslist
-                `,
-
-              (err, materialData) => {
+                    magodmis.mtrl_typeslist
+                        INNER JOIN
+                    magodmis.mtrl_data ON magodmis.mtrl_typeslist.Material LIKE magodmis.mtrl_data.Mtrl_Type`,
+              (err, materialsData) => {
                 if (err) {
                   console.log("errr", err);
                 } else {
-                  // console.log("materialData", materialData);
+                  // console.log("materialsData", materialsData);
                   // insert into detailssssss
 
-                  // res.send(materialData);
                   let flag = [];
                   for (
                     let i = 0;
@@ -1175,27 +1171,21 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
                     i++
                   ) {
                     const element = req.body.rowsForCreateDraftPN[i];
-
-                    let excise = "";
-
-                    excise = materialData.filter(
-                      (obj) => obj.Material === element.Material
-                    )[0]?.ExciseClNo;
-                    // console.log("excise", excise);
+                    // console.log("element", element);
+                    let filteredMaterialData = materialsData.filter(
+                      (obj) =>
+                        obj.Mtrl_Code === element.Mtrl_Code ||
+                        obj.MtrlGradeID === element.Mtrl ||
+                        obj.Material === element.Material
+                    )[0];
+                    // console.log("filteredMaterialData", filteredMaterialData);
 
                     let qtyForDraft =
                       parseInt(element.QtyCleared) -
                       parseInt(element.QtyPacked) -
                       parseInt(element.InDraftPN);
 
-                    // console.log("qtyForDraft", qtyForDraft);
-                    // ? materialData.filter(
-                    //     (obj) =>
-                    //       obj.Material === element.Material ||
-                    //       obj.MtrlID === element.Mtrl
-                    //   )?.ExciseClNo
-                    // : "";
-                    // console.log("excise", excise);
+                    // .........insert into details
                     try {
                       misQueryMod(
                         `INSERT INTO magodmis.draft_dc_inv_details
@@ -1211,18 +1201,25 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
                         }', '${req.body.headerData.OrdSchNo}','${
                           element.Dwg_Code
                         }', '${element.DwgName}', '${element.Mtrl_Code}', '${
-                          element.Material ? element.Material : ""
-                        }', '${qtyForDraft}', ${element.UnitWt}, ${(
-                          parseFloat(qtyForDraft) * parseFloat(element.UnitWt)
-                        ).toFixed(2)}, ${element.UnitPrice}, ${(
-                          parseFloat(qtyForDraft) *
-                          parseFloat(element.UnitPrice)
-                        ).toFixed(2)}, '${excise || ""}', '${DCStatus}', '${
-                          element.PackingLevel
-                        }', '${element.InspLevel}',
-                           ${parseFloat(element.MtrlCost).toFixed(
+                          filteredMaterialData.Material || ""
+                        }', '${qtyForDraft || 0}', ${parseFloat(
+                          element.UnitWt || 0
+                        ).toFixed(3)}, ${(
+                          parseFloat(qtyForDraft || 0) *
+                          parseFloat(element.UnitWt || 0)
+                        ).toFixed(3)}, ${parseFloat(
+                          element.UnitPrice || 0
+                        ).toFixed(2)}, ${(
+                          parseFloat(qtyForDraft || 0) *
+                          parseFloat(element.UnitPrice || 0)
+                        ).toFixed(2)}, '${
+                          filteredMaterialData.ExciseClNo || ""
+                        }', '${DCStatus}', '${
+                          element.PackingLevel || "Pkng1"
+                        }', '${element.InspLevel || "Insp1"}',
+                           ${parseFloat(element.MtrlCost || 0).toFixed(
                              2
-                           )},${parseFloat(element.JWCost).toFixed(2)})`,
+                           )},${parseFloat(element.JWCost || 0).toFixed(2)})`,
 
                         (err, detailsData) => {
                           if (err) {
@@ -1654,7 +1651,7 @@ inspectionProfileRouter.post(
   }
 );
 inspectionProfileRouter.post("/testRejectData", async (req, res, next) => {
-  console.log("reqqqq testRejectData.....1", req.body.scId);
+  // console.log("reqqqq testRejectData.....1", req.body.scId);
   try {
     misQueryMod(
       // `SELECT * FROM magodmis.rejectionslist r WHERE r.ScheduleId='124826' `,
@@ -1662,7 +1659,7 @@ inspectionProfileRouter.post("/testRejectData", async (req, res, next) => {
       (err, data) => {
         if (err) logger.error(err);
 
-        console.log("data....1", data);
+        // console.log("data....1", data);
         res.send(data);
       }
     );
@@ -1716,7 +1713,7 @@ inspectionProfileRouter.post(
         (err, data) => {
           if (err) logger.error(err);
 
-          console.log("data....1", data);
+          // console.log("data....1", data);
           res.send(data);
         }
       );
