@@ -644,13 +644,13 @@ InvoiceRouter.post("/createInvoice", async (req, res, next) => {
                       misQueryMod(
                         `SELECT
                           *,
-                          DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
+                          DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
                           DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
                           DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
                           DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
                           DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
                           DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-                          DATE_FORMAT(DespatchDate, '%d/%m/%Y') AS Printable_DespatchDate
+                          DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate
                         FROM
                             magodmis.draft_dc_inv_register
                             WHERE (DC_Inv_No = ${req.body.invRegisterData.DC_Inv_No})`,
