@@ -1274,8 +1274,14 @@ inspectionProfileRouter.post("/saveDraftPN", async (req, res, next) => {
       misQueryMod(
         `UPDATE magodmis.draft_dc_inv_details 
         SET 
-            Qty = '${element.Qty}',
-            Unit_Wt = '${element.Unit_Wt}'
+            Qty = '${parseInt(element.Qty)}',
+            DC_Srl_Amt = '${(
+              parseFloat(element.Qty) * parseFloat(element.Unit_Rate)
+            ).toFixed(2)}',
+            Unit_Wt = '${parseFloat(element.Unit_Wt).toFixed(3)}',
+            DC_Srl_Wt = '${(
+              parseFloat(element.Qty) * parseFloat(element.Unit_Wt)
+            ).toFixed(3)}'
         WHERE
             (Draft_dc_inv_DetailsID = '${element.Draft_dc_inv_DetailsID}')
                 AND (DC_Inv_No = '${element.DC_Inv_No}')
