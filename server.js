@@ -15,6 +15,7 @@ const pnrdcRouter = require("./routes/PackAndInv/ReturnableDC");
 const InvoiceRouter = require("./routes/PackAndInv/Invoice");
 const inspectionProfileRouter = require("./routes/PackAndInv/InspectionProfile");
 const PDFRouter = require("./routes/PackAndInv/PDF");
+const RunningNoRouter = require("./routes/PackAndInv/RunningNo");
 // All Routes --------------------
 app.use(cors());
 app.use(bodyParser.json());
@@ -27,6 +28,7 @@ app.use("/pnrDC", pnrdcRouter);
 app.use("/invoice", InvoiceRouter);
 app.use("/inspection", inspectionProfileRouter);
 app.use("/pdf", PDFRouter);
+app.use("/runningNo", RunningNoRouter);
 
 app.use((err, req, res, next) => {
   res.status(err.status || 500);

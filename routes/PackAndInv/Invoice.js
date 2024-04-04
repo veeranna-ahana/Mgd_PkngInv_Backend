@@ -71,7 +71,7 @@ InvoiceRouter.get("/getAllStates", async (req, res, next) => {
 });
 
 InvoiceRouter.post("/createPN", async (req, res, next) => {
-  const { VoucherNoLength, unit, srlType, prefix } = req.body;
+  // const { VoucherNoLength, unit, srlType, prefix } = req.body;
 
   const DCStatus = "Packed";
 
@@ -119,217 +119,291 @@ InvoiceRouter.post("/createPN", async (req, res, next) => {
   // console.log("finYear", finYear);
 
   try {
-    const selectQuery = `
-    SELECT * FROM magod_setup.magod_runningno WHERE SrlType='${srlType}' AND UnitName='${unit}' ORDER BY Id DESC LIMIT 1;
-    `;
+    misQueryMod(
+      `SELECT 
+          *
+        FROM
+          magod_setup.year_prefix_suffix
+        WHERE
+          UnitName = '${req.body.runningNoData.UnitName}' AND SrlType = '${req.body.runningNoData.SrlType}'`,
+      (err, yearPrefixSuffixData) => {
+        if (err) {
+          logger.error(err);
+        } else {
+          // console.log("yearPrefixSuffixData", yearPrefixSuffixData[0]);
 
-    setupQueryMod(selectQuery, async (selectError, selectResult) => {
-      if (selectError) {
-        logger.error(selectError);
-        return next(selectResult);
-      }
+          misQueryMod(
+            `SELECT * FROM magod_setup.magod_runningno WHERE Id = '${req.body.runningNoData.Id}'`,
+            (err, runningNoData) => {
+              if (err) {
+                logger.error(err);
+              } else {
+                let newRunningNo = (
+                  parseInt(runningNoData[0].Running_No) + 1
+                ).toString();
 
-      let newDCNo = "";
+                for (let i = 0; i < runningNoData[0].Length; i++) {
+                  // const element = newRunningNo[i];
 
-      if (selectResult && selectResult.length > 0) {
-        const lastRunNo = selectResult[0].Running_No;
-        const numericPart = parseInt(lastRunNo) + 1;
-
-        const paddedNumericPart = numericPart
-          .toString()
-          .padStart(VoucherNoLength, "0");
-
-        newDCNo = `${paddedNumericPart}`;
-        // console.log("New DCNo:", newDCNo);
-
-        // Update Running_No in magod_setup.magod_runningno
-        const updateRunningNoQuery = `
-          UPDATE magod_setup.magod_runningno
-          SET Running_No = ${numericPart}
-          WHERE SrlType='${srlType}' AND UnitName='${unit}' AND Period='${finYear}';
-        `;
-
-        setupQueryMod(updateRunningNoQuery, (updateError, updateResult) => {
-          if (updateError) {
-            logger.error(updateError);
-            return next(updateResult);
-          }
-        });
-      }
-
-      // .......
-      try {
-        misQueryMod(
-          `insert into magodmis.draft_dc_inv_register(DC_InvType, InvoiceFor, OrderScheduleNo, DC_No, DC_Date, DC_Fin_Year, PymtAmtRecd, PaymentMode, PaymentReceiptDetails, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, PO_Date, Net_Total, TptCharges, Discount, AssessableValue, TaxAmount, Del_Chg, InvTotal, Round_Off, GrandTotal, Total_Wt, DCStatus, DespatchDate, TptMode, VehNo, Remarks, PO_Value, PaymentTerms, BillType, PAN_No, Del_ContactName, Del_ContactNo) values(
-        '${req.body.invRegisterData.DC_InvType || ""}', '${
-            req.body.invRegisterData.InvoiceFor || ""
-          }', '${
-            req.body.invRegisterData.InvoiceFor || ""
-          }', '${newDCNo}', '${DC_Date}', '${finYear}', '${
-            req.body.invRegisterData.PymtAmtRecd || 0.0
-          }', '${req.body.invRegisterData.PaymentMode || ""}', '${
-            req.body.invRegisterData.PaymentReceiptDetails || ""
-          }', '${req.body.invRegisterData.Cust_Code}', '${
-            req.body.invRegisterData.Cust_Name
-          }', '${req.body.invRegisterData.Cust_Address || ""}', '${
-            req.body.invRegisterData.Cust_Place || ""
-          }', '${req.body.invRegisterData.Cust_State || ""}', '${
-            req.body.invRegisterData.Cust_StateId || "00"
-          }', '${req.body.invRegisterData.PIN_Code || ""}', '${
-            req.body.invRegisterData.Del_Address || ""
-          }', '${req.body.invRegisterData.GSTNo || ""}', '${
-            req.body.invRegisterData.PO_No || ""
-          }', '${DC_Date}', '${req.body.invRegisterData.Net_Total || 0.0}', '${
-            req.body.invRegisterData.TptCharges || 0.0
-          }', '${req.body.invRegisterData.Discount || 0.0}', '${
-            req.body.invRegisterData.AssessableValue || 0.0
-          }', '${req.body.invRegisterData.TaxAmount || 0.0}', '${
-            req.body.invRegisterData.Del_Chg || 0.0
-          }', '${req.body.invRegisterData.InvTotal || 0.0}', '${
-            req.body.invRegisterData.Round_Off || 0.0
-          }', '${req.body.invRegisterData.GrandTotal || 0.0}', '${
-            req.body.invRegisterData.Total_Wt || 0.0
-          }', '${DCStatus}', '${dispatchDate}', '${
-            req.body.invRegisterData.TptMode || ""
-          }', '${req.body.invRegisterData.VehNo || ""}', '${
-            req.body.invRegisterData.Remarks || ""
-          }', '${req.body.invRegisterData.PO_Value || 0.0}', '${
-            req.body.invRegisterData.PaymentTerms || ""
-          }', '${req.body.invRegisterData.BillType || BillType}', '${
-            req.body.invRegisterData.PAN_No || ""
-          }', '${req.body.invRegisterData.Del_ContactName || ""}', '${
-            req.body.invRegisterData.Del_ContactNo || ""
-          }'
-      )
-`,
-          (err, registerData) => {
-            if (err) {
-              console.log("errrr", err);
-            } else {
-              // console.log("registerdata", registerData);
-            }
-
-            // updating the material issue register table if the materials are imported from iv
-            try {
-              misQueryMod(
-                `UPDATE magodmis.material_issue_register
-            SET
-                PkngDcNo = '${newDCNo}',
-                PkngDCDate = NOW(),
-                IVStatus = '${DCStatus}',
-                Dc_ID = '${registerData.insertId}'
-            WHERE
-                (Iv_Id = '${req.body.invRegisterData.Iv_Id}')`,
-
-                (err, updateMtrlIssueRegister) => {
-                  if (err) logger.error(err);
-                }
-              );
-            } catch (error) {
-              next(error);
-            }
-            // insert into detailssssss
-            let flag = 0;
-
-            for (let i = 0; i < req.body.invDetailsData.length; i++) {
-              const element = req.body.invDetailsData[i];
-              try {
-                misQueryMod(
-                  `insert into magodmis.draft_dc_inv_details(DC_Inv_No, DC_Inv_Srl, Cust_Code, Dwg_No, Mtrl, Material, Qty, Unit_Wt, DC_Srl_Wt, Unit_Rate, DC_Srl_Amt, Excise_CL_no, DespStatus) values(${
-                    registerData.insertId
-                  }, ${i + 1}, '${req.body.invRegisterData.Cust_Code}', '${
-                    element.Dwg_No
-                  }', '${element.Mtrl}', '${element.Material}', '${
-                    element.Qty || 0
-                  }', '${element.Unit_Wt || 0.0}', '${
-                    element.DC_Srl_Wt || 0.0
-                  }', '${element.Unit_Rate || 0.0}', '${
-                    element.DC_Srl_Amt || 0.0
-                  }', '${element.Excise_CL_no}', '${DCStatus}')`,
-                  (err, detailsData) => {
-                    if (err) {
-                      console.log("errr", err);
-                    } else {
-                    }
+                  if (newRunningNo.length < runningNoData[0].Length) {
+                    newRunningNo = 0 + newRunningNo;
                   }
-                );
-              } catch (error) {
-                next(error);
-              }
-            }
-            if (req.body.invTaxData?.length > 0) {
-              for (let i = 0; i < req.body.invTaxData.length; i++) {
-                const element = req.body.invTaxData[i];
+                }
+                let newRunningNoWithPS =
+                  (yearPrefixSuffixData[0].Prefix || "") +
+                  newRunningNo +
+                  (yearPrefixSuffixData[0].Suffix || "");
+
+                // console.log("newRunningNo", newRunningNo);
+                // console.log("newRunningNoWithPS", newRunningNoWithPS);
+
                 try {
                   misQueryMod(
-                    `INSERT INTO magodmis.dc_inv_taxtable (Dc_inv_No, DcTaxID, TaxID, Tax_Name, TaxOn, TaxableAmount, TaxPercent, TaxAmt) values('${
-                      registerData.insertId
-                    }', '${i + 1}', '${element.TaxID}', '${
-                      element.Tax_Name
-                    }', '${element.TaxOn}', '${element.TaxableAmount}', '${
-                      element.TaxPercent
-                    }', '${element.TaxAmt}')`,
-                    (err, taxData) => {
-                      if (err) logger.error(err);
+                    `insert into magodmis.draft_dc_inv_register(DC_InvType, InvoiceFor, OrderScheduleNo, DC_No, DC_Date, DC_Fin_Year, PymtAmtRecd, PaymentMode, PaymentReceiptDetails, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, PO_Date, Net_Total, TptCharges, Discount, AssessableValue, TaxAmount, Del_Chg, InvTotal, Round_Off, GrandTotal, Total_Wt, DCStatus, DespatchDate, TptMode, VehNo, Remarks, PO_Value, PaymentTerms, BillType, PAN_No, Del_ContactName, Del_ContactNo) values(
+                    '${req.body.invRegisterData.DC_InvType || ""}', '${
+                      req.body.invRegisterData.InvoiceFor || ""
+                    }', '${
+                      req.body.invRegisterData.InvoiceFor || ""
+                    }', '${newRunningNoWithPS}', '${DC_Date}', '${finYear}', '${
+                      req.body.invRegisterData.PymtAmtRecd || 0.0
+                    }', '${req.body.invRegisterData.PaymentMode || ""}', '${
+                      req.body.invRegisterData.PaymentReceiptDetails || ""
+                    }', '${req.body.invRegisterData.Cust_Code}', '${
+                      req.body.invRegisterData.Cust_Name
+                    }', '${req.body.invRegisterData.Cust_Address || ""}', '${
+                      req.body.invRegisterData.Cust_Place || ""
+                    }', '${req.body.invRegisterData.Cust_State || ""}', '${
+                      req.body.invRegisterData.Cust_StateId || "00"
+                    }', '${req.body.invRegisterData.PIN_Code || ""}', '${
+                      req.body.invRegisterData.Del_Address || ""
+                    }', '${req.body.invRegisterData.GSTNo || ""}', '${
+                      req.body.invRegisterData.PO_No || ""
+                    }', '${DC_Date}', '${
+                      req.body.invRegisterData.Net_Total || 0.0
+                    }', '${req.body.invRegisterData.TptCharges || 0.0}', '${
+                      req.body.invRegisterData.Discount || 0.0
+                    }', '${
+                      req.body.invRegisterData.AssessableValue || 0.0
+                    }', '${req.body.invRegisterData.TaxAmount || 0.0}', '${
+                      req.body.invRegisterData.Del_Chg || 0.0
+                    }', '${req.body.invRegisterData.InvTotal || 0.0}', '${
+                      req.body.invRegisterData.Round_Off || 0.0
+                    }', '${req.body.invRegisterData.GrandTotal || 0.0}', '${
+                      req.body.invRegisterData.Total_Wt || 0.0
+                    }', '${DCStatus}', '${dispatchDate}', '${
+                      req.body.invRegisterData.TptMode || ""
+                    }', '${req.body.invRegisterData.VehNo || ""}', '${
+                      req.body.invRegisterData.Remarks || ""
+                    }', '${req.body.invRegisterData.PO_Value || 0.0}', '${
+                      req.body.invRegisterData.PaymentTerms || ""
+                    }', '${req.body.invRegisterData.BillType || BillType}', '${
+                      req.body.invRegisterData.PAN_No || ""
+                    }', '${req.body.invRegisterData.Del_ContactName || ""}', '${
+                      req.body.invRegisterData.Del_ContactNo || ""
+                    }'
+                  )
+                `,
+                    (err, registerData) => {
+                      if (err) {
+                        console.log("errrr", err);
+                      } else {
+                        // console.log("registerdata", registerData);
+                      }
+                      // updating the material issue register table if the materials are imported from iv
+                      try {
+                        misQueryMod(
+                          `UPDATE magodmis.material_issue_register
+                        SET
+                            PkngDcNo = '${newRunningNoWithPS}',
+                            PkngDCDate = NOW(),
+                            IVStatus = '${DCStatus}',
+                            Dc_ID = '${registerData.insertId}'
+                        WHERE
+                            (Iv_Id = '${req.body.invRegisterData.Iv_Id}')`,
+                          (err, updateMtrlIssueRegister) => {
+                            if (err) logger.error(err);
+                          }
+                        );
+                      } catch (error) {
+                        next(error);
+                      }
+                      // insert into detailssssss
+                      let flag = 0;
+                      for (let i = 0; i < req.body.invDetailsData.length; i++) {
+                        const element = req.body.invDetailsData[i];
+                        try {
+                          misQueryMod(
+                            `insert into magodmis.draft_dc_inv_details(DC_Inv_No, DC_Inv_Srl, Cust_Code, Dwg_No, Mtrl, Material, Qty, Unit_Wt, DC_Srl_Wt, Unit_Rate, DC_Srl_Amt, Excise_CL_no, DespStatus) values(${
+                              registerData.insertId
+                            }, ${i + 1}, '${
+                              req.body.invRegisterData.Cust_Code
+                            }', '${element.Dwg_No}', '${element.Mtrl}', '${
+                              element.Material
+                            }', '${element.Qty || 0}', '${
+                              element.Unit_Wt || 0.0
+                            }', '${element.DC_Srl_Wt || 0.0}', '${
+                              element.Unit_Rate || 0.0
+                            }', '${element.DC_Srl_Amt || 0.0}', '${
+                              element.Excise_CL_no
+                            }', '${DCStatus}')`,
+                            (err, detailsData) => {
+                              if (err) {
+                                console.log("errr", err);
+                              } else {
+                              }
+                            }
+                          );
+                        } catch (error) {
+                          next(error);
+                        }
+                      }
+                      if (req.body.invTaxData?.length > 0) {
+                        for (let i = 0; i < req.body.invTaxData.length; i++) {
+                          const element = req.body.invTaxData[i];
+                          try {
+                            misQueryMod(
+                              `INSERT INTO magodmis.dc_inv_taxtable (Dc_inv_No, DcTaxID, TaxID, Tax_Name, TaxOn, TaxableAmount, TaxPercent, TaxAmt) values('${
+                                registerData.insertId
+                              }', '${i + 1}', '${element.TaxID}', '${
+                                element.Tax_Name
+                              }', '${element.TaxOn}', '${
+                                element.TaxableAmount
+                              }', '${element.TaxPercent}', '${
+                                element.TaxAmt
+                              }')`,
+                              (err, taxData) => {
+                                if (err) logger.error(err);
+                              }
+                            );
+                          } catch (error) {
+                            next(error);
+                          }
+                        }
+                        flag = 1;
+                      } else {
+                        flag = 1;
+                      }
+                      if (flag === 1) {
+                        try {
+                          misQueryMod(
+                            `SELECT
+                                  *,
+                                  DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
+                                  DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
+                                  DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
+                                  DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
+                                  DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
+                                  DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
+                                  DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate
+                                FROM
+                                  magodmis.draft_dc_inv_register
+                                WHERE
+                                      magodmis.draft_dc_inv_register.DC_Inv_No = ${registerData?.insertId}`,
+                            (err, invRegisterData) => {
+                              if (err) {
+                                logger.error(err);
+                              } else {
+                                misQueryMod(
+                                  `UPDATE magod_setup.magod_runningno SET Running_No = '${parseInt(
+                                    newRunningNo
+                                  )}', Prefix = '${
+                                    yearPrefixSuffixData[0].Prefix || ""
+                                  }', Suffix = '${
+                                    yearPrefixSuffixData[0].Suffix || ""
+                                  }' WHERE (Id = '${
+                                    req.body.runningNoData.Id
+                                  }')`,
+                                  (err, updateRunningNo) => {
+                                    if (err) {
+                                      logger.error(err);
+                                    } else {
+                                      console.log("updated running no");
+                                      res.send({
+                                        flag: 1,
+                                        message: "PN Created",
+                                        invRegisterData: invRegisterData,
+                                      });
+                                    }
+                                  }
+                                );
+                              }
+                            }
+                          );
+                        } catch (error) {
+                          next(error);
+                        }
+                      } else if (flag === 0) {
+                        res.send({
+                          message: "Error in Backend",
+                          flag: 0,
+                        });
+                      } else {
+                        res.send({
+                          message: "Uncaught Error, Check with backend",
+                          flag: 0,
+                        });
+                      }
                     }
                   );
                 } catch (error) {
                   next(error);
                 }
               }
-              flag = 1;
-            } else {
-              flag = 1;
             }
-            if (flag === 1) {
-              try {
-                misQueryMod(
-                  `SELECT
-                      *,
-                      DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
-                      DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
-                      DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
-                      DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
-                      DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
-                      DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-                      DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate
-                    FROM
-                      magodmis.draft_dc_inv_register
-                    WHERE
-                          magodmis.draft_dc_inv_register.DC_Inv_No = ${registerData?.insertId}`,
-                  (err, invRegisterData) => {
-                    if (err) logger.error(err);
-                    res.send({
-                      flag: 1,
-                      message: "PN Created",
-                      invRegisterData: invRegisterData,
-                    });
-                  }
-                );
-              } catch (error) {
-                next(error);
-              }
-            } else if (flag === 0) {
-              res.send({
-                message: "Error in Backend",
-                flag: 0,
-              });
-            } else {
-              res.send({
-                message: "Uncaught Error, Check with backend",
-                flag: 0,
-              });
-            }
-          }
-        );
-      } catch (error) {
-        next(error);
+          );
+        }
       }
-    });
+    );
   } catch (error) {
-    console.error("An error occurred:", error);
     next(error);
   }
+
+  // try {
+  //   const selectQuery = `
+  //   SELECT * FROM magod_setup.magod_runningno WHERE SrlType='${srlType}' AND UnitName='${unit}' ORDER BY Id DESC LIMIT 1;
+  //   `;
+
+  //   setupQueryMod(selectQuery, async (selectError, selectResult) => {
+  //     if (selectError) {
+  //       logger.error(selectError);
+  //       return next(selectResult);
+  //     }
+
+  //     let newDCNo = "";
+
+  //     if (selectResult && selectResult.length > 0) {
+  //       const lastRunNo = selectResult[0].Running_No;
+  //       const numericPart = parseInt(lastRunNo) + 1;
+
+  //       const paddedNumericPart = numericPart
+  //         .toString()
+  //         .padStart(VoucherNoLength, "0");
+
+  //       newDCNo = `${paddedNumericPart}`;
+  //       // console.log("New DCNo:", newDCNo);
+
+  //       // Update Running_No in magod_setup.magod_runningno
+  //       const updateRunningNoQuery = `
+  //         UPDATE magod_setup.magod_runningno
+  //         SET Running_No = ${numericPart}
+  //         WHERE SrlType='${srlType}' AND UnitName='${unit}' AND Period='${finYear}';
+  //       `;
+
+  //       setupQueryMod(updateRunningNoQuery, (updateError, updateResult) => {
+  //         if (updateError) {
+  //           logger.error(updateError);
+  //           return next(updateResult);
+  //         }
+  //       });
+  //     }
+
+  //     // .......
+
+  //   });
+  // } catch (error) {
+  //   console.error("An error occurred:", error);
+  //   next(error);
+  // }
 });
 
 InvoiceRouter.post("/getListData", async (req, res, next) => {
@@ -752,6 +826,7 @@ InvoiceRouter.get("/getIVList", async (req, res, next) => {
     next(error);
   }
 });
+
 InvoiceRouter.post("/getIVDetails", async (req, res, next) => {
   // running the sql_mode=only_full_group_by query to resolve the group by error
   try {
@@ -841,69 +916,184 @@ InvoiceRouter.post("/getIVDetails", async (req, res, next) => {
   }
 });
 
-InvoiceRouter.post("/insertRunNoRow", async (req, res, next) => {
-  const { unit, srlType, ResetPeriod, ResetValue, VoucherNoLength, prefix } =
-    req.body;
+// InvoiceRouter.post("/insertRunNoRow", async (req, res, next) => {
+//   // console.log("reqqqq", req.body);
 
-  const unitName = `${unit}`;
-  const date = new Date();
-  const year = date.getFullYear();
-  const startYear = date.getMonth() >= 3 ? year : year - 1;
-  const endYear = startYear + 1;
+//   let Running_No = 0;
 
-  const financialYearStartDate = new Date(`${startYear}-04-01`);
-  const financialYearEndDate = new Date(`${endYear}-04-01`);
+//   const todayDate = new Date();
+//   let finYear = `${
+//     (todayDate.getMonth() + 1 < 4
+//       ? todayDate.getFullYear() - 1
+//       : todayDate.getFullYear()
+//     )
+//       .toString()
+//       .slice(-2) +
+//     "/" +
+//     (todayDate.getMonth() + 1 < 4
+//       ? todayDate.getFullYear()
+//       : todayDate.getFullYear() + 1
+//     )
+//       .toString()
+//       .slice(-2)
+//   }`;
 
-  const formattedStartDate = financialYearStartDate.toISOString().slice(0, 10);
-  const formattedEndDate = financialYearEndDate.toISOString().slice(0, 10);
+//   try {
+//     setupQueryMod(
+//       `SELECT
+//           *
+//         FROM
+//           magod_setup.magod_runningno
+//         WHERE
+//           UnitName = '${req.body.unitName}' AND SrlType = '${req.body.srlType}'
+//           AND ResetPeriod = '${req.body.ResetPeriod}'
+//           AND Period = '${req.body.finYear}'`,
+//       (err, selectRN1) => {
+//         if (err) {
+//           logger.error(err);
+//         } else {
+//           // console.log("selectRN1", selectRN1);
 
-  const getYear =
-    date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-  const yearParts = getYear.split("-");
-  const startYearShort = yearParts[0].slice(-2);
-  const endYearShort = yearParts[1].slice(-2);
-  const finYear = `${startYearShort}/${endYearShort}`;
+//           if (selectRN1.length === 0) {
+//             try {
+//               setupQueryMod(
+//                 `SELECT
+//                     *
+//                   FROM
+//                       magod_setup.year_prefix_suffix
+//                   WHERE
+//                       UnitName = '${req.body.unitName}' AND SrlType = '${req.body.srlType}'`,
+//                 (err, selectYearPrefixSuffix) => {
+//                   if (err) {
+//                     logger.error(err);
+//                   } else {
+//                     // console.log(
+//                     //   "selectYearPrefixSuffix",
+//                     //   selectYearPrefixSuffix
+//                     // );
+//                     let EffectiveFrom_date = `${
+//                       todayDate.getFullYear() + "-04-01"
+//                     }`;
+//                     let Reset_date = `${todayDate.getFullYear() + "-03-31"}`;
+//                     setupQueryMod(
+//                       `INSERT INTO magod_setup.magod_runningno
+//                           (UnitName, SrlType, ResetPeriod, ResetValue, EffectiveFrom_date, Reset_date, Running_No, Prefix, Suffix, Length, Period, Running_EffectiveDate)
+//                         VALUES
+//                           ('${selectYearPrefixSuffix[0].UnitName || ""}', '${
+//                         selectYearPrefixSuffix[0].SrlType || ""
+//                       }', '${req.body.ResetPeriod || ""}', '${
+//                         req.body.ResetValue || 0
+//                       }', '${EffectiveFrom_date}', '${Reset_date}', '${Running_No}', '${
+//                         selectYearPrefixSuffix[0].Prefix || ""
+//                       }', '${selectYearPrefixSuffix[0].Suffix || ""}', '${
+//                         req.body.Length || 5
+//                       }', '${req.body.finYear || finYear}', now())`,
+//                       (err, insertRunningNo) => {
+//                         if (err) {
+//                           logger.error(err);
+//                         } else {
+//                           // console.log("insertRunningNo", insertRunningNo);
 
-  console.log("finYear", finYear);
+//                           setupQueryMod(
+//                             `SELECT * FROM magod_setup.magod_runningno WHERE Id = ${insertRunningNo.insertId}`,
+//                             (err, selectRunningNo) => {
+//                               if (err) {
+//                                 logger.error(err);
+//                               } else {
+//                                 res.send({
+//                                   runningNoData: selectRunningNo[0],
+//                                   message: "running no inserted",
+//                                 });
+//                                 // console.log("selectRunningNo", selectRunningNo);
+//                               }
+//                             }
+//                           );
+//                         }
+//                       }
+//                     );
+//                   }
+//                 }
+//               );
+//             } catch (error) {
+//               next(error);
+//             }
+//           } else {
+//             res.send({
+//               runningNoData: selectRN1[0],
+//               message: "fechted running no",
+//             });
+//           }
+//         }
+//       }
+//     );
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
-  try {
-    const selectQuery = `
-    SELECT COUNT(Id) FROM magod_setup.magod_runningno  WHERE SrlType='${srlType}'
-    AND UnitName='${unit}' AND Period='${finYear}'
-    `;
+// InvoiceRouter.post("/insertRunNoRow", async (req, res, next) => {
+//   const { unit, srlType, ResetPeriod, ResetValue, VoucherNoLength, prefix } =
+//     req.body;
 
-    setupQueryMod(selectQuery, (selectError, selectResult) => {
-      if (selectError) {
-        logger.error(selectError);
-        return next(selectResult);
-      }
+//   const unitName = `${unit}`;
+//   const date = new Date();
+//   const year = date.getFullYear();
+//   const startYear = date.getMonth() >= 3 ? year : year - 1;
+//   const endYear = startYear + 1;
 
-      const count = selectResult[0]["COUNT(Id)"];
+//   const financialYearStartDate = new Date(`${startYear}-04-01`);
+//   const financialYearEndDate = new Date(`${endYear}-04-01`);
 
-      if (count === 0) {
-        // If count is 0, execute the INSERT query
-        const insertQuery = `
-          INSERT INTO magod_setup.magod_runningno
-          (UnitName, SrlType, ResetPeriod, ResetValue, EffectiveFrom_date, Reset_date, Running_No, Prefix, Length, Period, Running_EffectiveDate)
-          VALUES ('${unit}', '${srlType}', '${ResetPeriod}', ${ResetValue}, '${formattedStartDate}', '${formattedEndDate}',${ResetValue}, '${prefix}', ${VoucherNoLength}, '${finYear}', CurDate());
-        `;
+//   const formattedStartDate = financialYearStartDate.toISOString().slice(0, 10);
+//   const formattedEndDate = financialYearEndDate.toISOString().slice(0, 10);
 
-        // Execute the INSERT query
-        setupQueryMod(insertQuery, (insertError, insertResult) => {
-          if (insertError) {
-            logger.error(insertError);
-            return next(insertResult);
-          }
+//   const getYear =
+//     date.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+//   const yearParts = getYear.split("-");
+//   const startYearShort = yearParts[0].slice(-2);
+//   const endYearShort = yearParts[1].slice(-2);
+//   const finYear = `${startYearShort}/${endYearShort}`;
 
-          res.json({ message: "Record inserted successfully." });
-        });
-      } else {
-        res.json({ message: "Record already exists." });
-      }
-    });
-  } catch (error) {
-    console.error("An error occurred:", error);
-    next(error);
-  }
-});
+//   console.log("finYear", finYear);
+
+//   try {
+//     const selectQuery = `
+//     SELECT COUNT(Id) FROM magod_setup.magod_runningno  WHERE SrlType='${srlType}'
+//     AND UnitName='${unit}' AND Period='${finYear}'
+//     `;
+
+//     setupQueryMod(selectQuery, (selectError, selectResult) => {
+//       if (selectError) {
+//         logger.error(selectError);
+//         return next(selectResult);
+//       }
+
+//       const count = selectResult[0]["COUNT(Id)"];
+
+//       if (count === 0) {
+//         // If count is 0, execute the INSERT query
+//         const insertQuery = `
+//           INSERT INTO magod_setup.magod_runningno
+//           (UnitName, SrlType, ResetPeriod, ResetValue, EffectiveFrom_date, Reset_date, Running_No, Prefix, Length, Period, Running_EffectiveDate)
+//           VALUES ('${unit}', '${srlType}', '${ResetPeriod}', ${ResetValue}, '${formattedStartDate}', '${formattedEndDate}',${ResetValue}, '${prefix}', ${VoucherNoLength}, '${finYear}', CurDate());
+//         `;
+
+//         // Execute the INSERT query
+//         setupQueryMod(insertQuery, (insertError, insertResult) => {
+//           if (insertError) {
+//             logger.error(insertError);
+//             return next(insertResult);
+//           }
+
+//           res.json({ message: "Record inserted successfully." });
+//         });
+//       } else {
+//         res.json({ message: "Record already exists." });
+//       }
+//     });
+//   } catch (error) {
+//     console.error("An error occurred:", error);
+//     next(error);
+//   }
+// });
 module.exports = InvoiceRouter;
