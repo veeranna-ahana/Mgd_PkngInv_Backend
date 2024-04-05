@@ -65,7 +65,9 @@ RunningNoRouter.post("/insertAndGetRunningNo", async (req, res, next) => {
                     let EffectiveFrom_date = `${
                       todayDate.getFullYear() + "-04-01"
                     }`;
-                    let Reset_date = `${todayDate.getFullYear() + "-03-31"}`;
+                    let Reset_date = `${
+                      todayDate.getFullYear() + 1 + "-03-31"
+                    }`;
                     setupQueryMod(
                       `INSERT INTO magod_setup.magod_runningno
                             (UnitName, SrlType, ResetPeriod, ResetValue, EffectiveFrom_date, Reset_date, Running_No, Prefix, Suffix, Length, Period, Running_EffectiveDate)

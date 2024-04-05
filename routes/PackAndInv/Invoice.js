@@ -662,93 +662,165 @@ InvoiceRouter.post("/updateInvoice", async (req, res, next) => {
 
 InvoiceRouter.post("/createInvoice", async (req, res, next) => {
   const DCStatus = "Dispatched";
+
+  // const todayDate = new Date();
+
+  // let year = todayDate.getFullYear();
+  // let month = todayDate.getMonth() + 1;
+  // let datee = todayDate.getDate();
+  // let hour = todayDate.getHours();
+  // let mins = todayDate.getMinutes();
+
+  // let formatedTodayDate = `${year}-${month < 10 ? "0" + month : month}-${
+  //   datee < 10 ? "0" + datee : datee
+  // }T${hour < 10 ? "0" + hour : hour}:${mins < 10 ? "0" + mins : mins}`;
+
+  // dispatchDate = req.body.invRegisterData.DespatchDate || formatedTodayDate;
+
+  // var DC_Date = todayDate.toISOString().split("T")[0];
+
+  // fin year
+  // const getYear =
+  //   todayDate.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  // const yearParts = getYear.split("-");
+  // const startYearShort = yearParts[0].slice(-2);
+  // const endYearShort = yearParts[1].slice(-2);
+  // const finYear = `${startYearShort}/${endYearShort}`;
+
   try {
     misQueryMod(
-      `SELECT
-            Inv_No
+      `SELECT 
+          *
         FROM
-            magodmis.draft_dc_inv_register
+          magod_setup.year_prefix_suffix
         WHERE
-            Inv_No IS NOT NULL
-                AND Inv_No != 'Cancelled'
-                AND Inv_No != 'undefined'
-                AND Inv_No != ''
-                AND Inv_No != 'null'
-                AND Inv_No != 'NaN'
-                AND DCStatus != 'Cancelled'
-        ORDER BY Inv_No DESC
-        LIMIT 1`,
-      (err, old_inv_no) => {
-        if (err) logger.error(err);
-        var num = old_inv_no[0].Inv_No.match(/\d+/g);
-        // num[0] will be 21
-        var letr = old_inv_no[0].Inv_No.match(/[a-zA-Z]+/g);
-        // got new inv number
-        var newInv = letr + String(parseInt(num[0]) + 1);
-        // update register
-        try {
+          UnitName = '${req.body.runningNoData.UnitName}' AND SrlType = '${req.body.runningNoData.SrlType}'`,
+      (err, yearPrefixSuffixData) => {
+        if (err) {
+          logger.error(err);
+        } else {
+          // console.log("yearPrefixSuffixData", yearPrefixSuffixData[0]);
+
           misQueryMod(
-            `UPDATE magodmis.draft_dc_inv_register SET Inv_No = '${newInv}',
-            DCStatus = '${DCStatus}',
-            Inv_Date = now()
-            WHERE (DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}')`,
-            (err, updateRegister) => {
-              if (err) logger.error(err);
-              // update details
-              try {
-                misQueryMod(
-                  `UPDATE magodmis.draft_dc_inv_details SET
-                  DespStatus = '${DCStatus}'
-                  WHERE (DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}')`,
-                  (err, updateDetails) => {
-                    if (err) logger.error(err);
-                    // updating the material issue register
-                    try {
-                      misQueryMod(
-                        `UPDATE magodmis.material_issue_register SET IVStatus = '${DCStatus}' WHERE (Dc_ID = '${req.body.invRegisterData.DC_Inv_No}')`,
-                        (err, InMtrlIssueRegister) => {
-                          if (err) logger.error(err);
-                        }
-                      );
-                    } catch (error) {
-                      next(error);
-                    }
-                    // select is not requried in pn
-                    try {
-                      misQueryMod(
-                        `SELECT
-                          *,
-                          DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
-                          DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
-                          DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
-                          DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
-                          DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
-                          DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
-                          DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate
-                        FROM
-                            magodmis.draft_dc_inv_register
-                            WHERE (DC_Inv_No = ${req.body.invRegisterData.DC_Inv_No})`,
-                        (err, registerData) => {
-                          if (err) logger.error(err);
-                          res.send({
-                            flag: 1,
-                            message: "Invoice created",
-                            registerData: registerData,
-                          });
-                        }
-                      );
-                    } catch (error) {
-                      next(error);
-                    }
+            `SELECT * FROM magod_setup.magod_runningno WHERE Id = '${req.body.runningNoData.Id}'`,
+            (err, runningNoData) => {
+              if (err) {
+                logger.error(err);
+              } else {
+                let newRunningNo = (
+                  parseInt(runningNoData[0].Running_No) + 1
+                ).toString();
+
+                for (let i = 0; i < runningNoData[0].Length; i++) {
+                  // const element = newRunningNo[i];
+
+                  if (newRunningNo.length < runningNoData[0].Length) {
+                    newRunningNo = 0 + newRunningNo;
                   }
-                );
-              } catch (error) {
-                next(error);
+                }
+                let newRunningNoWithPS =
+                  (yearPrefixSuffixData[0].Prefix || "") +
+                  newRunningNo +
+                  (yearPrefixSuffixData[0].Suffix || "");
+
+                // console.log("newRunningNo", newRunningNo);
+                // console.log("newRunningNoWithPS", newRunningNoWithPS);
+
+                // update register
+                try {
+                  misQueryMod(
+                    `UPDATE magodmis.draft_dc_inv_register SET Inv_No = '${newRunningNoWithPS}',
+                      DCStatus = '${DCStatus}',
+                      Inv_Date = now(),
+                      Inv_Fin_Year = '${runningNoData[0].Period}'
+                      WHERE (DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}')`,
+                    (err, updateRegister) => {
+                      if (err) logger.error(err);
+                      // update details
+                      try {
+                        misQueryMod(
+                          `UPDATE magodmis.draft_dc_inv_details SET
+                              DespStatus = '${DCStatus}'
+                              WHERE (DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}')`,
+                          (err, updateDetails) => {
+                            if (err) logger.error(err);
+                            // updating the material issue register
+                            try {
+                              misQueryMod(
+                                `UPDATE magodmis.material_issue_register SET IVStatus = '${DCStatus}' WHERE (Dc_ID = '${req.body.invRegisterData.DC_Inv_No}')`,
+                                (err, InMtrlIssueRegister) => {
+                                  if (err) {
+                                    logger.error(err);
+                                  } else {
+                                    misQueryMod(
+                                      `UPDATE magod_setup.magod_runningno SET Running_No = '${parseInt(
+                                        newRunningNo
+                                      )}', Prefix = '${
+                                        yearPrefixSuffixData[0].Prefix || ""
+                                      }', Suffix = '${
+                                        yearPrefixSuffixData[0].Suffix || ""
+                                      }' WHERE (Id = '${
+                                        req.body.runningNoData.Id
+                                      }')`,
+                                      (err, updateRunningNo) => {
+                                        if (err) {
+                                          logger.error(err);
+                                        } else {
+                                          console.log("updated running no");
+                                          // res.send({
+                                          //   flag: 1,
+                                          //   message: "PN Created",
+                                          //   invRegisterData: invRegisterData,
+                                          // });
+                                        }
+                                      }
+                                    );
+                                  }
+                                }
+                              );
+                            } catch (error) {
+                              next(error);
+                            }
+                            // select is not requried in pn
+                            try {
+                              misQueryMod(
+                                `SELECT
+                                    *,
+                                    DATE_FORMAT(DespatchDate, '%Y-%m-%dT%H:%i') AS DespatchDate,
+                                    DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date,
+                                    DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
+                                    DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
+                                    DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Inv_Date,
+                                    DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
+                                    DATE_FORMAT(DespatchDate, '%d/%m/%Y %H:%i') AS Printable_DespatchDate
+                                  FROM
+                                      magodmis.draft_dc_inv_register
+                                      WHERE (DC_Inv_No = ${req.body.invRegisterData.DC_Inv_No})`,
+                                (err, registerData) => {
+                                  if (err) logger.error(err);
+                                  res.send({
+                                    flag: 1,
+                                    message: "Invoice created",
+                                    registerData: registerData,
+                                  });
+                                }
+                              );
+                            } catch (error) {
+                              next(error);
+                            }
+                          }
+                        );
+                      } catch (error) {
+                        next(error);
+                      }
+                    }
+                  );
+                } catch (error) {
+                  next(error);
+                }
               }
             }
           );
-        } catch (error) {
-          next(error);
         }
       }
     );
