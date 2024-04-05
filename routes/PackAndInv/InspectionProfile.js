@@ -1327,111 +1327,155 @@ inspectionProfileRouter.post("/preparePN", async (req, res, next) => {
 
   var todayDate = today.toISOString().split("T")[0];
 
-  // console.log("bodyy.....", req.body);
-
-  // get old dcno ....
   try {
     misQueryMod(
       `SELECT 
-            DC_No
+          *
         FROM
-            magodmis.draft_dc_inv_register
+          magod_setup.year_prefix_suffix
         WHERE
-            DC_No IS NOT NULL AND DC_No != 'null'
-                AND DC_No != ''
-                AND DC_No != 'NaN'
-                AND DC_No != 'undefined'
-                AND DC_InvType != 'ReturnableDC'
-        ORDER BY DC_Inv_No DESC`,
-      (err, old_DC_No) => {
+          UnitName = '${req.body.runningNoData.UnitName}' AND SrlType = '${req.body.runningNoData.SrlType}'`,
+      (err, yearPrefixSuffixData) => {
         if (err) {
-          console.log("errrr", err);
+          logger.error(err);
         } else {
-          // console.log("old_DC_No", old_DC_No);
+          // console.log("yearPrefixSuffixData", yearPrefixSuffixData[0]);
 
-          // update register
-          try {
-            misQueryMod(
-              `UPDATE magodmis.draft_dc_inv_register
+          misQueryMod(
+            `SELECT * FROM magod_setup.magod_runningno WHERE Id = '${req.body.runningNoData.Id}'`,
+            (err, runningNoData) => {
+              if (err) {
+                logger.error(err);
+              } else {
+                let newRunningNo = (
+                  parseInt(runningNoData[0].Running_No) + 1
+                ).toString();
+
+                for (let i = 0; i < runningNoData[0].Length; i++) {
+                  // const element = newRunningNo[i];
+
+                  if (newRunningNo.length < runningNoData[0].Length) {
+                    newRunningNo = 0 + newRunningNo;
+                  }
+                }
+                let newRunningNoWithPS =
+                  (yearPrefixSuffixData[0].Prefix || "") +
+                  newRunningNo +
+                  (yearPrefixSuffixData[0].Suffix || "");
+
+                // console.log("newRunningNo", newRunningNo);
+                // console.log("newRunningNoWithPS", newRunningNoWithPS);
+
+                // update register
+                try {
+                  misQueryMod(
+                    `UPDATE magodmis.draft_dc_inv_register
                 SET
-                    DC_No = '${parseInt(old_DC_No[0].DC_No) + 1}',
+                    DC_No = '${newRunningNoWithPS}',
                     DC_Date = '${todayDate}',
+                    DC_Fin_Year = '${runningNoData[0].Period}',
                     DCStatus = '${DCStatus}',
                     InspBy = '${req.body.insAndPack.inspectedBy}',
                     PackedBy = '${req.body.insAndPack.packedBy}'
                 WHERE
                     (DC_Inv_No = '${req.body.DC_Inv_No}')`,
-              (err, updateRegister) => {
-                if (err) {
-                  console.log("errrr", err);
-                } else {
-                  // update details
-                  try {
-                    misQueryMod(
-                      `UPDATE magodmis.draft_dc_inv_details
+                    (err, updateRegister) => {
+                      if (err) {
+                        console.log("errrr", err);
+                      } else {
+                        // update details
+                        try {
+                          misQueryMod(
+                            `UPDATE magodmis.draft_dc_inv_details
                       SET
                           DespStatus = '${DCStatus}'
                       WHERE
                           (DC_Inv_No = '${req.body.DC_Inv_No}')`,
-                      (err, updateDetails) => {
-                        if (err) {
-                          console.log("errrr", err);
-                        } else {
-                          // console.log("updateDetails", updateDetails);
+                            (err, updateDetails) => {
+                              if (err) {
+                                console.log("errrr", err);
+                              } else {
+                                // console.log("updateDetails", updateDetails);
 
-                          // let flag = [];
+                                // let flag = [];
 
-                          // updating orderschedule details
-                          for (
-                            let i = 0;
-                            i < req.body.invDetailsData?.length;
-                            i++
-                          ) {
-                            const element = req.body.invDetailsData[i];
+                                // updating orderschedule details
+                                for (
+                                  let i = 0;
+                                  i < req.body.invDetailsData?.length;
+                                  i++
+                                ) {
+                                  const element = req.body.invDetailsData[i];
 
-                            try {
-                              misQueryMod(
-                                `UPDATE magodmis.orderscheduledetails
+                                  try {
+                                    misQueryMod(
+                                      `UPDATE magodmis.orderscheduledetails
                                   SET
                                       QtyPacked = '${element.Qty}'
                                   WHERE
                                       (SchDetailsID = '${element.OrderSchDetailsID}')`,
-                                (err, updateOrderDetails) => {
-                                  if (err) {
-                                    console.log("errrr", err);
-                                  } else {
-                                    // console.log(
-                                    //   "done in order schedule details"
-                                    // );
-                                    // flag.push(1);
+                                      (err, updateOrderDetails) => {
+                                        if (err) {
+                                          console.log("errrr", err);
+                                        } else {
+                                          misQueryMod(
+                                            `UPDATE magod_setup.magod_runningno SET Running_No = '${parseInt(
+                                              newRunningNo
+                                            )}', Prefix = '${
+                                              yearPrefixSuffixData[0].Prefix ||
+                                              ""
+                                            }', Suffix = '${
+                                              yearPrefixSuffixData[0].Suffix ||
+                                              ""
+                                            }' WHERE (Id = '${
+                                              req.body.runningNoData.Id
+                                            }')`,
+                                            (err, updateRunningNo) => {
+                                              if (err) {
+                                                logger.error(err);
+                                              } else {
+                                                console.log(
+                                                  "updated running no"
+                                                );
+                                                // res.send({
+                                                //   flag: 1,
+                                                //   message: "PN Created",
+                                                //   invRegisterData: invRegisterData,
+                                                // });
+                                              }
+                                            }
+                                          );
+                                        }
+                                      }
+                                    );
+                                  } catch (error) {
+                                    next(error);
                                   }
                                 }
-                              );
-                            } catch (error) {
-                              next(error);
+
+                                // console.log("flag", flag);
+
+                                res.send({
+                                  flag: 1,
+                                  message: "Prepare PN successful",
+                                });
+                              }
                             }
-                          }
-
-                          // console.log("flag", flag);
-
-                          res.send({
-                            flag: 1,
-                            message: "Prepare PN successful",
-                          });
+                          );
+                        } catch (error) {
+                          next(error);
                         }
-                      }
-                    );
-                  } catch (error) {
-                    next(error);
-                  }
 
-                  // console.log("updateRegister", updateRegister);
+                        // console.log("updateRegister", updateRegister);
+                      }
+                    }
+                  );
+                } catch (error) {
+                  next(error);
                 }
               }
-            );
-          } catch (error) {
-            next(error);
-          }
+            }
+          );
         }
       }
     );
@@ -1439,32 +1483,63 @@ inspectionProfileRouter.post("/preparePN", async (req, res, next) => {
     next(error);
   }
 
-  // for (let i = 0; i < req.body.invDetailsData.length; i++) {
-  //   const element = req.body.invDetailsData[i];
+  // ...........................................
 
-  //   try {
-  //     misQueryMod(
-  //       `UPDATE magodmis.draft_dc_inv_details
-  //       SET
-  //           Qty = '${element.Qty}',
-  //           Unit_Wt = '${element.Unit_Wt}'
+  // ...........................................
+
+  // // get old dcno ....
+  // try {
+  //   misQueryMod(
+  //     `SELECT
+  //           DC_No
+  //       FROM
+  //           magodmis.draft_dc_inv_register
   //       WHERE
-  //           (Draft_dc_inv_DetailsID = '${element.Draft_dc_inv_DetailsID}')
-  //               AND (DC_Inv_No = '${element.DC_Inv_No}')
-  //               AND (DC_Inv_Srl = '${element.DC_Inv_Srl}')`,
-  //       (err, updateDetails) => {
-  //         if (err) {
-  //           console.log("errrr", err);
-  //         } else {
-  //           // flag.push(1);
-  //           // console.log("updateDetails", updateDetails);
-  //         }
+  //           DC_No IS NOT NULL AND DC_No != 'null'
+  //               AND DC_No != ''
+  //               AND DC_No != 'NaN'
+  //               AND DC_No != 'undefined'
+  //               AND DC_InvType != 'ReturnableDC'
+  //       ORDER BY DC_Inv_No DESC`,
+  //     (err, old_DC_No) => {
+  //       if (err) {
+  //         console.log("errrr", err);
+  //       } else {
+  //         // console.log("old_DC_No", old_DC_No);
+
   //       }
-  //     );
-  //   } catch (error) {
-  //     next(error);
-  //   }
+  //     }
+  //   );
+  // } catch (error) {
+  //   next(error);
   // }
+
+  // // for (let i = 0; i < req.body.invDetailsData.length; i++) {
+  // //   const element = req.body.invDetailsData[i];
+
+  // //   try {
+  // //     misQueryMod(
+  // //       `UPDATE magodmis.draft_dc_inv_details
+  // //       SET
+  // //           Qty = '${element.Qty}',
+  // //           Unit_Wt = '${element.Unit_Wt}'
+  // //       WHERE
+  // //           (Draft_dc_inv_DetailsID = '${element.Draft_dc_inv_DetailsID}')
+  // //               AND (DC_Inv_No = '${element.DC_Inv_No}')
+  // //               AND (DC_Inv_Srl = '${element.DC_Inv_Srl}')`,
+  // //       (err, updateDetails) => {
+  // //         if (err) {
+  // //           console.log("errrr", err);
+  // //         } else {
+  // //           // flag.push(1);
+  // //           // console.log("updateDetails", updateDetails);
+  // //         }
+  // //       }
+  // //     );
+  // //   } catch (error) {
+  // //     next(error);
+  // //   }
+  // // }
 });
 
 inspectionProfileRouter.post(
