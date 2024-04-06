@@ -7,8 +7,9 @@ pnProfileRouter.post("/pnprofileinvoices", async (req, res, next) => {
     if (!req.body.custCode) {
       misQueryMod(
         `SELECT
-          *,DATE_FORMAT(Dc_inv_Date, "%d %M %Y") as Dc_inv_Date,
-          DATE_FORMAT(DC_Date, "%d %M %Y") as DC_Date
+          *,
+          DATE_FORMAT(Dc_inv_Date, "%d %M %Y") as Dc_inv_Date,
+          DATE_FORMAT(DC_Date, "%d %M %Y") as Printable_DC_Date
         FROM
           magodmis.draft_dc_inv_register
         WHERE
@@ -23,7 +24,9 @@ pnProfileRouter.post("/pnprofileinvoices", async (req, res, next) => {
     } else {
       misQueryMod(
         `SELECT
-          *
+          *,
+          DATE_FORMAT(Dc_inv_Date, "%d %M %Y") as Dc_inv_Date,
+          DATE_FORMAT(DC_Date, "%d %M %Y") as Printable_DC_Date
         FROM
           magodmis.draft_dc_inv_register
         WHERE
