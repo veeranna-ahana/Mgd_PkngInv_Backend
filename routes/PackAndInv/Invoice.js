@@ -410,7 +410,8 @@ InvoiceRouter.post("/getListData", async (req, res, next) => {
   try {
     misQueryMod(
       `SELECT 
-          *, DATE_FORMAT(DC_Date, '%d/%m/%Y') AS DC_Date
+          *,
+          DATE_FORMAT(DC_Date, "%d %M %Y") AS Printable_DC_Date
         FROM
           magodmis.draft_dc_inv_register
         WHERE
