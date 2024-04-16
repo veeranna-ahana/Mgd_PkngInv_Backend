@@ -702,9 +702,10 @@ pnrdcRouter.post("/createDC", async (req, res, next) => {
         return next(prefixError);
       }
 
-      const prefix = prefixResult[0].Prefix;
+      const prefix =
+        prefixResult[0]?.Prefix !== null ? prefixResult[0]?.Prefix : "";
       const suffix =
-        prefixResult[0].Suffix !== null ? prefixResult[0].Suffix : "";
+        prefixResult[0]?.Suffix !== null ? prefixResult[0]?.Suffix : "";
 
       // Fetch running number from magod_setup.magod_runningno
       const selectQuery = `
@@ -1342,9 +1343,11 @@ pnrdcRouter.post("/accept", async (req, res, next) => {
         return next(prefixResult);
       }
 
-      const fetchedPrefix = prefixResult[0].Prefix;
+      // const fetchedPrefix = prefixResult[0].Prefix;
+      const fetchedPrefix =
+        prefixResult[0]?.Prefix !== null ? prefixResult[0]?.Prefix : "";
       const fetchedSuffix =
-        prefixResult[0].Suffix !== null ? prefixResult[0].Suffix : "";
+        prefixResult[0]?.Suffix !== null ? prefixResult[0]?.Suffix : "";
 
       // console.log("Prefix Suffix", fetchedPrefix, fetchedSuffix);
       const selectQuery = `
@@ -1918,9 +1921,10 @@ pnrdcRouter.post("/insertRunNoRow", async (req, res, next) => {
             return next(prefixError);
           }
 
-          const prefix = prefixResult[0].Prefix;
+          const prefix =
+            prefixResult[0]?.Prefix !== null ? prefixResult[0]?.Prefix : "";
           const suffix =
-            prefixResult[0].Suffix !== null ? prefixResult[0].Suffix : "";
+            prefixResult[0]?.Suffix !== null ? prefixResult[0]?.Suffix : "";
 
           console.log("Prefix Suffix", prefix, suffix);
 
