@@ -25,4 +25,5 @@ PDFRouter.post("/getPDFData", async (req, res, next) => {
     next(error);
   }
 });
+
 module.exports = PDFRouter;
