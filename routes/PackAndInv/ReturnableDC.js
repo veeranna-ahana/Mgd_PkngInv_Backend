@@ -1992,4 +1992,23 @@ pnrdcRouter.post("/updateCount", async (req, res, next) => {
   }
 });
 
+pnrdcRouter.get("/getPDFData", async (req, res, next) => {
+  try {
+    setupQueryMod(
+      `SELECT * FROM magod_setup.magodlaser_units`,
+      (err, pdfData) => {
+        if (err) {
+          console.log("err", err);
+        } else {
+          //   console.log("pdfData", pdfData);
+
+          res.send(pdfData);
+        }
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = pnrdcRouter;
