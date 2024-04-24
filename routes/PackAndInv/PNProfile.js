@@ -453,7 +453,7 @@ pnProfileRouter.post("/cancelPN", async (req, res, next) => {
         } else {
           try {
             misQueryMod(
-              `UPDATE magodmis.draft_dc_inv_details SET DespStatus = 'NotSent' WHERE (DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}')`,
+              `UPDATE magodmis.draft_dc_inv_details SET DespStatus = 'Cancelled' WHERE (DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}')`,
               (err, cancelPNDetails) => {
                 if (err) {
                   logger.error(err);
@@ -466,10 +466,66 @@ pnProfileRouter.post("/cancelPN", async (req, res, next) => {
                         if (err) {
                           logger.error(err);
                         } else {
-                          res.send({
-                            flag: 1,
-                            message: "Packing Note Cancelled",
-                          });
+                          // updating orderschedule details
+                          try {
+                            misQueryMod(
+                              `SELECT 
+                                    magodmis.orderscheduledetails.SchDetailsID,
+                                    magodmis.orderscheduledetails.QtyPacked,
+                                    magodmis.draft_dc_inv_details.Qty
+                                FROM
+                                    magodmis.draft_dc_inv_details
+                                        INNER JOIN
+                                    magodmis.orderscheduledetails ON magodmis.draft_dc_inv_details.OrderSchDetailsID = magodmis.orderscheduledetails.SchDetailsID
+                                WHERE
+                                    magodmis.draft_dc_inv_details.DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}'`,
+                              (err, fetchOrderSchAndInvDtls) => {
+                                if (err) {
+                                  logger.error(err);
+                                } else {
+                                  // console.log(
+                                  //   "fetchOrderSchAndInvDtls",
+                                  //   fetchOrderSchAndInvDtls
+                                  // );
+
+                                  for (
+                                    let i = 0;
+                                    i < fetchOrderSchAndInvDtls.length;
+                                    i++
+                                  ) {
+                                    const element = fetchOrderSchAndInvDtls[i];
+
+                                    misQueryMod(
+                                      `UPDATE magodmis.orderscheduledetails 
+                                          SET 
+                                              QtyPacked = '${
+                                                parseInt(element.QtyPacked) -
+                                                parseInt(element.Qty)
+                                              }'
+                                          WHERE
+                                              (SchDetailsID = '${
+                                                element.SchDetailsID
+                                              }')`,
+                                      (err, updateOrdrSchDetails) => {
+                                        if (err) {
+                                          logger.error(err);
+                                        } else {
+                                        }
+                                      }
+                                    );
+                                  }
+
+                                  // send
+                                  res.send({
+                                    flag: 1,
+                                    message: "Packing Note Cancelled",
+                                  });
+                                }
+                              }
+                            );
+                          } catch (error) {
+                            next(error);
+                          }
                         }
                       }
                     );
