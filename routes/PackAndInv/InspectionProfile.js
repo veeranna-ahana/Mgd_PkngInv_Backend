@@ -1395,70 +1395,98 @@ inspectionProfileRouter.post("/preparePN", async (req, res, next) => {
                               if (err) {
                                 console.log("errrr", err);
                               } else {
-                                // console.log("updateDetails", updateDetails);
+                                // fetching packed data to update order schdeule details
 
-                                // let flag = [];
+                                try {
+                                  misQueryMod(
+                                    `SELECT 
+                                        magodmis.draft_dc_inv_details.Qty,
+                                        magodmis.orderscheduledetails.QtyPacked
+                                    FROM
+                                        magodmis.draft_dc_inv_details
+                                            INNER JOIN
+                                        magodmis.orderscheduledetails ON magodmis.orderscheduledetails.SchDetailsID = magodmis.draft_dc_inv_details.OrderSchDetailsID
+                                    WHERE
+                                        magodmis.draft_dc_inv_details.DC_Inv_No = '${req.body.DC_Inv_No}'`,
+                                    (err, packedAndQty) => {
+                                      if (err) {
+                                        console.log("errrr", err);
+                                      } else {
+                                        // updating orderschedule details
+                                        for (
+                                          let i = 0;
+                                          i < req.body.invDetailsData?.length;
+                                          i++
+                                        ) {
+                                          const element =
+                                            req.body.invDetailsData[i];
 
-                                // updating orderschedule details
-                                for (
-                                  let i = 0;
-                                  i < req.body.invDetailsData?.length;
-                                  i++
-                                ) {
-                                  const element = req.body.invDetailsData[i];
-
-                                  try {
-                                    misQueryMod(
-                                      `UPDATE magodmis.orderscheduledetails
-                                  SET
-                                      QtyPacked = '${element.Qty}'
-                                  WHERE
-                                      (SchDetailsID = '${element.OrderSchDetailsID}')`,
-                                      (err, updateOrderDetails) => {
-                                        if (err) {
-                                          console.log("errrr", err);
-                                        } else {
-                                          misQueryMod(
-                                            `UPDATE magod_setup.magod_runningno SET Running_No = '${parseInt(
-                                              newRunningNo
-                                            )}', Prefix = '${
-                                              yearPrefixSuffixData[0].Prefix ||
-                                              ""
-                                            }', Suffix = '${
-                                              yearPrefixSuffixData[0].Suffix ||
-                                              ""
-                                            }' WHERE (Id = '${
-                                              req.body.runningNoData.Id
-                                            }')`,
-                                            (err, updateRunningNo) => {
-                                              if (err) {
-                                                logger.error(err);
-                                              } else {
-                                                console.log(
-                                                  "updated running no"
-                                                );
-                                                // res.send({
-                                                //   flag: 1,
-                                                //   message: "PN Created",
-                                                //   invRegisterData: invRegisterData,
-                                                // });
+                                          try {
+                                            misQueryMod(
+                                              `UPDATE magodmis.orderscheduledetails
+                                                SET
+                                                    QtyPacked = '${
+                                                      parseInt(
+                                                        packedAndQty[i]
+                                                          .QtyPacked || 0
+                                                      ) +
+                                                      parseInt(element.Qty || 0)
+                                                    }'
+                                                WHERE
+                                                  (SchDetailsID = '${
+                                                    element.OrderSchDetailsID
+                                                  }')`,
+                                              (err, updateOrderDetails) => {
+                                                if (err) {
+                                                  console.log("errrr", err);
+                                                } else {
+                                                  misQueryMod(
+                                                    `UPDATE magod_setup.magod_runningno SET Running_No = '${parseInt(
+                                                      newRunningNo
+                                                    )}', Prefix = '${
+                                                      yearPrefixSuffixData[0]
+                                                        .Prefix || ""
+                                                    }', Suffix = '${
+                                                      yearPrefixSuffixData[0]
+                                                        .Suffix || ""
+                                                    }' WHERE (Id = '${
+                                                      req.body.runningNoData.Id
+                                                    }')`,
+                                                    (err, updateRunningNo) => {
+                                                      if (err) {
+                                                        logger.error(err);
+                                                      } else {
+                                                        console.log(
+                                                          "updated running no"
+                                                        );
+                                                        // res.send({
+                                                        //   flag: 1,
+                                                        //   message: "PN Created",
+                                                        //   invRegisterData: invRegisterData,
+                                                        // });
+                                                      }
+                                                    }
+                                                  );
+                                                }
                                               }
-                                            }
-                                          );
+                                            );
+                                          } catch (error) {
+                                            next(error);
+                                          }
                                         }
+
+                                        // console.log("flag", flag);
+
+                                        res.send({
+                                          flag: 1,
+                                          message: "Prepare PN successful",
+                                        });
                                       }
-                                    );
-                                  } catch (error) {
-                                    next(error);
-                                  }
+                                    }
+                                  );
+                                } catch (error) {
+                                  next(error);
                                 }
-
-                                // console.log("flag", flag);
-
-                                res.send({
-                                  flag: 1,
-                                  message: "Prepare PN successful",
-                                });
                               }
                             }
                           );
