@@ -1102,7 +1102,24 @@ inspectionProfileRouter.post("/deleteDraftPN", (req, res) => {
 });
 
 inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
+  let totalWeight = 0;
   let netTotal = 0;
+
+  // calculating total weight
+
+  for (let i = 0; i < req.body.rowsForCreateDraftPN.length; i++) {
+    const element = req.body.rowsForCreateDraftPN[i];
+
+    let qtyForDraft =
+      parseInt(element.QtyCleared) -
+      parseInt(element.QtyPacked) -
+      parseInt(element.InDraftPN);
+    totalWeight =
+      parseFloat(totalWeight) +
+      parseInt(qtyForDraft || 0) * parseFloat(element.UnitWt || 0);
+  }
+
+  // calcuating net tatal
   for (let i = 0; i < req.body.rowsForCreateDraftPN.length; i++) {
     const element = req.body.rowsForCreateDraftPN[i];
     let qty =
@@ -1116,14 +1133,13 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
         (parseFloat(element.JWCost || 0) + parseFloat(element.MtrlCost || 0));
   }
 
-  // '${req.body.headerData.Delivery || ""}'
   const DCStatus = "Draft";
   try {
     misQueryMod(
       `INSERT INTO magodmis.draft_dc_inv_register
-        (ScheduleId, DC_InvType, InvoiceFor, OrderNo, OrderScheduleNo, OrderDate, DC_Date, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, Net_Total, Total_Wt, DCStatus, InspBy, PackedBy, PaymentTerms,BillType,PAN_No)
+        (ScheduleId, Dc_inv_Date, DC_InvType, InvoiceFor, OrderNo, OrderScheduleNo, OrderDate, DC_Date, Cust_Code, Cust_Name, Cust_Address, Cust_Place, Cust_State, Cust_StateId, PIN_Code, Del_Address, GSTNo, PO_No, Net_Total, Total_Wt, DCStatus, InspBy, PackedBy, PaymentTerms,BillType,PAN_No)
         VALUES
-        ('${req.body.headerData.ScheduleId}', '${
+        ('${req.body.headerData.ScheduleId}', now(),'${
         req.body.headerData.ScheduleType
       }', '${req.body.headerData.Type}', '${req.body.headerData.Order_No}', '${
         req.body.headerData.OrdSchNo
@@ -1137,7 +1153,9 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
         req.body.headerData.Pin_Code || ""
       }', 'Ex Factory', '${req.body.headerData.GSTNo || ""}', '${
         req.body.headerData.PO || ""
-      }', '${parseFloat(netTotal || 0).toFixed(2)}', '0', '${DCStatus}','${
+      }', '${parseFloat(netTotal || 0).toFixed(2)}', '${parseFloat(
+        totalWeight || 0
+      ).toFixed(3)}', '${DCStatus}','${
         req.body.headerData.SalesContact || ""
       }','${req.body.headerData.Inspected_By || ""}','${
         req.body.headerData.PaymentTerms || ""
@@ -1682,6 +1700,7 @@ inspectionProfileRouter.post(
                                       misQueryMod(
                                         `SELECT  *,
                                           DATE_ADD(DespatchDate, INTERVAL 1 DAY) AS DespatchDate,
+                                          DATE_FORMAT(Dc_inv_Date, '%d/%m/%Y %T') AS Printable_Dc_inv_Date, 
                                           DATE_FORMAT(DC_Date, '%d/%m/%Y') AS Printable_DC_Date,
                                           DATE_FORMAT(PO_Date, '%d/%m/%Y') AS Printable_PO_Date,
                                           DATE_FORMAT(Inv_Date, '%d/%m/%Y') AS Printable_Inv_Date,
