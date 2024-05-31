@@ -1190,12 +1190,13 @@ inspectionProfileRouter.post("/postCreateDraftPN", async (req, res, next) => {
                   ) {
                     const element = req.body.rowsForCreateDraftPN[i];
                     // console.log("element", element);
-                    let filteredMaterialData = materialsData.filter(
-                      (obj) =>
-                        obj.Mtrl_Code === element.Mtrl_Code ||
-                        obj.MtrlGradeID === element.Mtrl ||
-                        obj.Material === element.Material
-                    )[0];
+                    let filteredMaterialData =
+                      materialsData.filter(
+                        (obj) =>
+                          obj.Mtrl_Code === element.Mtrl_Code ||
+                          obj.MtrlGradeID === element.Mtrl ||
+                          obj.Material === element.Material
+                      )[0] || {};
                     // console.log("filteredMaterialData", filteredMaterialData);
 
                     let qtyForDraft =
