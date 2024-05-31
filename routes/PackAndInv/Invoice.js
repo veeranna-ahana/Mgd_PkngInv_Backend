@@ -745,6 +745,64 @@ InvoiceRouter.post("/createInvoice", async (req, res, next) => {
                               WHERE (DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}')`,
                           (err, updateDetails) => {
                             if (err) logger.error(err);
+
+                            // fetching packed data to update order schdeule details
+
+                            try {
+                              misQueryMod(
+                                `SELECT 
+                                    *
+                                FROM
+                                    magodmis.draft_dc_inv_details
+                                        INNER JOIN
+                                    magodmis.orderscheduledetails ON magodmis.orderscheduledetails.SchDetailsID = magodmis.draft_dc_inv_details.OrderSchDetailsID
+                                WHERE
+                                    magodmis.draft_dc_inv_details.DC_Inv_No = '${req.body.invRegisterData.DC_Inv_No}'`,
+                                (err, deliveredAndQty) => {
+                                  if (err) {
+                                    console.log("errrr", err);
+                                  } else {
+                                    // updating orderschedule details
+                                    for (
+                                      let i = 0;
+                                      i < req.body.invDetailsData?.length;
+                                      i++
+                                    ) {
+                                      const element =
+                                        req.body.invDetailsData[i];
+
+                                      try {
+                                        misQueryMod(
+                                          `UPDATE magodmis.orderscheduledetails
+                                            SET
+                                              QtyDelivered = '${
+                                                parseInt(
+                                                  deliveredAndQty[i]
+                                                    ?.QtyDelivered || 0
+                                                ) + parseInt(element.Qty || 0)
+                                              }'
+                                            WHERE
+                                              (SchDetailsID = '${
+                                                element.OrderSchDetailsID
+                                              }')`,
+                                          (err, updateOrderDetails) => {
+                                            if (err) {
+                                              console.log("errrr", err);
+                                            } else {
+                                            }
+                                          }
+                                        );
+                                      } catch (error) {
+                                        next(error);
+                                      }
+                                    }
+                                  }
+                                }
+                              );
+                            } catch (error) {
+                              next(error);
+                            }
+
                             // updating the material issue register
                             try {
                               misQueryMod(
