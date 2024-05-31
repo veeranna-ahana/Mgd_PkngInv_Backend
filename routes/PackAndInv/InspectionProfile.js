@@ -1419,8 +1419,7 @@ inspectionProfileRouter.post("/preparePN", async (req, res, next) => {
                                 try {
                                   misQueryMod(
                                     `SELECT 
-                                        magodmis.draft_dc_inv_details.Qty,
-                                        magodmis.orderscheduledetails.QtyPacked
+                                        *
                                     FROM
                                         magodmis.draft_dc_inv_details
                                             INNER JOIN
