@@ -1,33 +1,36 @@
 {
-  "name": "lazerapi",
-  "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
-  "scripts": {
-    "starttest": "nodemon server.js",
-    "build": "pkg server.js --compress Brotli --output ./dist/Backend --targets win --public",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Suresh M A",
-  "license": "ISC",
-  "dependencies": {
-    "body-parser": "^1.20.0",
-    "cors": "^2.8.5",
-    "crypto-js": "^4.1.1",
-    "dotenv": "^16.3.1",
-    "dxf-writer": "^1.17.1",
-    "express": "^4.19.2",
-    "html-pdf-node": "^1.0.7",
-    "http-errors": "^2.0.0",
-    "jsonwebtoken": "^9.0.2",
-    "merge-pdf-buffers": "^1.0.3",
-    "moment": "^2.29.4",
-    "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.9.7",
-    "nodemailer": "^6.7.8",
-    "nodemon": "^3.1.0",
-    "pdf-lib": "^1.17.1",
-    "winston": "^3.8.2",
-    "winston-daily-rotate-file": "^4.7.1"
-  }
+	"name": "lazerapi",
+	"version": "1.0.0",
+	"description": "",
+	"main": "server.js",
+	"scripts": {
+		"starttest": "nodemon server.js",
+		"pm2-start": "pm2 start server.js --name 'packinginv'",
+		"pm2-stop": "pm2 stop 'packinginv'",
+		"pm2-restart": "pm2 restart 'packinginv'",
+		"build": "pkg server.js --compress Brotli --output ./dist/Backend --targets win --public",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Suresh M A",
+	"license": "ISC",
+	"dependencies": {
+		"body-parser": "^1.20.0",
+		"cors": "^2.8.5",
+		"crypto-js": "^4.1.1",
+		"dotenv": "^16.3.1",
+		"dxf-writer": "^1.17.1",
+		"express": "^4.19.2",
+		"html-pdf-node": "^1.0.7",
+		"http-errors": "^2.0.0",
+		"jsonwebtoken": "^9.0.2",
+		"merge-pdf-buffers": "^1.0.3",
+		"moment": "^2.29.4",
+		"multer": "^1.4.5-lts.1",
+		"mysql2": "^3.9.7",
+		"nodemailer": "^6.7.8",
+		"nodemon": "^3.1.0",
+		"pdf-lib": "^1.17.1",
+		"winston": "^3.8.2",
+		"winston-daily-rotate-file": "^4.7.1"
+	}
 }

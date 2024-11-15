@@ -707,7 +707,7 @@ pnuserRouter.post("/fetchMenuUrls", jsonParser, async (req, res, next) => {
 		if (!role || !username) return res.send(createError.BadRequest());
 
 		setupQueryMod(
-			`Select usr.Name, usr.UserName,usr.Password,usr.Role, unt.UnitName,usr.ActiveUser from magod_setup.magod_userlist usr
+			`Select usr.Name, usr.UserName,usr.Password,usr.Role, unt.UnitName,usr.ActiveUser,unt.State_Id,unt.GST_No from magod_setup.magod_userlist usr
         left join magod_setup.magodlaser_units unt on unt.UnitID = usr.UnitID WHERE usr.UserName = '${username}' and usr.ActiveUser = '1'`,
 			async (err, d) => {
 				if (err) logger.error(err);
