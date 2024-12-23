@@ -16,6 +16,8 @@ const InvoiceRouter = require("./routes/PackAndInv/Invoice");
 const inspectionProfileRouter = require("./routes/PackAndInv/InspectionProfile");
 const PDFRouter = require("./routes/PackAndInv/PDF");
 const RunningNoRouter = require("./routes/PackAndInv/RunningNo");
+const savePDF = require("./routes/PackAndInv/SavePDFServer");
+
 // All Routes --------------------
 app.use(cors());
 app.use(bodyParser.json());
@@ -29,6 +31,7 @@ app.use("/invoice", InvoiceRouter);
 app.use("/inspection", inspectionProfileRouter);
 app.use("/pdf", PDFRouter);
 app.use("/runningNo", RunningNoRouter);
+app.use("/savePDF", savePDF);
 
 app.use((err, req, res, next) => {
   res.status(err.status || 500);
