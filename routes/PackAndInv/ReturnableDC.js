@@ -18,6 +18,7 @@ pnrdcRouter.get("/getAllCust", async (req, res, next) => {
       (err, data) => {
         if (err) logger.error(err);
         // console.log("data", data);
+        logger.info("successfully fetched cust_data");
         res.send(data);
       }
     );
@@ -35,6 +36,9 @@ pnrdcRouter.post("/getCustomerDetails", async (req, res, next) => {
       (err, data) => {
         if (err) logger.error(err);
         // console.log("data", data);
+        logger.info(
+          `successfully fetched cust_data with Cust_Code=${cust_code}`
+        );
         res.send(data[0]);
       }
     );
@@ -57,6 +61,7 @@ pnrdcRouter.post("/postCustDetails", async (req, res, next) => {
           logger.error(err);
           return next(err);
         }
+        logger.info("successfully inserted data into draft_dc_inv_register");
 
         try {
           const selectQuery = `SELECT LAST_INSERT_ID() AS DcId`;
@@ -66,7 +71,8 @@ pnrdcRouter.post("/postCustDetails", async (req, res, next) => {
               return next(err);
             }
             const lastInsertedId = data[0].DcId;
-            console.log("lastInsertedId", lastInsertedId);
+            // console.log("lastInsertedId", lastInsertedId);
+            logger.info("successfully fetched last inserted DcId");
             res.send({ DcId: lastInsertedId });
           });
         } catch (error) {
@@ -86,6 +92,7 @@ pnrdcRouter.get("/getStates", async (req, res, next) => {
       (err, data) => {
         if (err) logger.error(err);
         // console.log("data", data);
+        logger.info("successfully fetched States from state_codelist");
         res.send(data);
       }
     );
@@ -126,9 +133,9 @@ pnrdcRouter.post("/loadTaxes", async (req, res, next) => {
   const { stateId, unitStateId, isGovOrg, isForiegn, gstNo, UnitGSTNo } =
     req.body;
 
-  console.log("gstNo", req.body.gstNo);
-  console.log("isGovOrg", req.body.isGovOrg);
-  console.log("isForiegn", req.body.isForiegn);
+  // console.log("gstNo", req.body.gstNo);
+  // console.log("isGovOrg", req.body.isGovOrg);
+  // console.log("isForiegn", req.body.isForiegn);
 
   try {
     let insertQuery = "";
@@ -170,6 +177,7 @@ pnrdcRouter.post("/loadTaxes", async (req, res, next) => {
     misQueryMod(insertQuery, (err, insertResult) => {
       if (err) {
         logger.error(err);
+        logger.info("successfully fetched taxes from taxdb");
         return next(err);
       }
       res.send(insertResult);
@@ -189,9 +197,12 @@ pnrdcRouter.post("/taxSelection", (req, res, next) => {
     `DELETE FROM magodmis.dc_inv_taxtable WHERE Dc_Inv_No = ${dcInvNo}`,
     (deleteErr, deleteData) => {
       if (deleteErr) {
-        console.error(deleteErr);
+        logger.error(deleteErr);
         return next(deleteErr);
       }
+      logger.info(
+        `successfully deleted data from dc_inv_taxtable with Dc_Inv_No = ${dcInvNo}`
+      );
 
       // Insert new tax records using a loop
       selectedTax.forEach((tax, index, array) => {
@@ -211,9 +222,10 @@ pnrdcRouter.post("/taxSelection", (req, res, next) => {
 
         misQueryMod(insertTaxQuery, (insertErr, insertData) => {
           if (insertErr) {
-            console.error(insertErr);
+            logger.error(insertErr);
             return next(insertErr);
           }
+          logger.info("successfully inserted data into dc_inv_taxtable");
 
           // Check if it's the last iteration
           if (index === array.length - 1) {
@@ -221,9 +233,10 @@ pnrdcRouter.post("/taxSelection", (req, res, next) => {
             const selectQuery = `SELECT * FROM magodmis.dc_inv_taxtable WHERE Dc_Inv_No = ${dcInvNo}`;
             misQueryMod(selectQuery, (selectErr, selectData) => {
               if (selectErr) {
-                console.error(selectErr);
+                logger.error(selectErr);
                 return next(selectErr);
               }
+              logger.info("successfully fetched tax data from dc_inv_taxtable");
 
               // Send the selected tax records in the response
               res.send(selectData);
@@ -261,6 +274,8 @@ pnrdcRouter.post("/updateCust", async (req, res, next) => {
           return next(selectErr);
         }
 
+        logger.info("successfully fetched StateCode data from state_codelist");
+
         const stateCode = selectData[0]?.StateCode || ""; // Extract StateCode
 
         // Execute the UPDATE query with the retrieved StateCode
@@ -284,6 +299,9 @@ pnrdcRouter.post("/updateCust", async (req, res, next) => {
               logger.error(updateErr);
               return next(updateErr);
             }
+            logger.info(
+              `successfully updated draft_dc_inv_register for DC_Inv_No=${dcInvNo}`
+            );
 
             // Handle the response or send it back to the client
             res.send({ status: "Updated" });
@@ -347,6 +365,10 @@ pnrdcRouter.post("/updateSave", async (req, res, next) => {
           return next(selectErr);
         }
 
+        logger.info(
+          `successfully fetched StateCode from state_codelist with State="${deliveryState}"`
+        );
+
         const stateCode = selectData[0]?.StateCode || ""; // Extract StateCode
 
         // Execute the UPDATE query with the retrieved StateCode
@@ -379,6 +401,9 @@ pnrdcRouter.post("/updateSave", async (req, res, next) => {
               logger.error(updateErr);
               return next(updateErr);
             }
+            logger.info(
+              `successfully updated draft_dc_inv_register for DC_Inv_No = ${dcInvNo}`
+            );
 
             try {
               // Update the draft_dc_inv_details table
@@ -397,9 +422,10 @@ pnrdcRouter.post("/updateSave", async (req, res, next) => {
                 await misQueryMod(updateDetailsQuery, async (err, data) => {
                   if (err) {
                     logger.error(err);
-                    console.log("error", err);
+
                     throw err;
                   }
+                  logger.info("successfully updated draft_dc_inv_details");
                 });
               }
 
@@ -412,6 +438,9 @@ pnrdcRouter.post("/updateSave", async (req, res, next) => {
                   logger.error(err);
                   throw err;
                 }
+                logger.info(
+                  `successfully deleted data from dc_inv_taxtable with Dc_Inv_No=${dcInvNo}`
+                );
 
                 if (selectedTax.length !== 0) {
                   for (const tax of selectedTax) {
@@ -433,6 +462,9 @@ pnrdcRouter.post("/updateSave", async (req, res, next) => {
                         logger.error(err);
                         throw err;
                       }
+                      logger.info(
+                        "successfully inserted data into from dc_inv_taxtable"
+                      );
                     });
                   }
                 }
@@ -458,6 +490,9 @@ pnrdcRouter.get("/materials", async (req, res, next) => {
       (err, data) => {
         if (err) logger.error(err);
         // console.log("data", data);
+        logger.info(
+          "successfully fetched Material, ExciseCLNo from mtrl_typesList"
+        );
         res.send(data);
       }
     );
@@ -509,6 +544,7 @@ pnrdcRouter.post("/returnDetails", async (req, res, next) => {
                 if (err) logger.error(err);
               }
             );
+            logger.info("successfully inserted data into draft_dc_inv_details");
             res.send({ status: "Inserted" });
           } catch (error) {
             next(error);
@@ -524,6 +560,7 @@ pnrdcRouter.post("/returnDetails", async (req, res, next) => {
                 if (err) logger.error(err);
               }
             );
+            logger.info("successfully inserted data into draft_dc_inv_details");
             res.send({ status: "Inserted" });
           } catch (error) {
             next(error);
@@ -544,6 +581,7 @@ pnrdcRouter.post("/getTableData", async (req, res, next) => {
       (err, data) => {
         if (err) logger.error(err);
         // console.log("data", data);
+        logger.info("successfully selected data from draft_dc_inv_details");
         res.send(data);
       }
     );
@@ -563,6 +601,9 @@ pnrdcRouter.post("/deleteRow", async (req, res, next) => {
           logger.error(err);
           return next(err);
         }
+        logger.info(
+          `successfully deleted data from draft_dc_inv_details with DC_Inv_No='${dcInvNo}' and DC_Inv_Srl=${srl}`
+        );
 
         try {
           const selectQuery = `SELECT * FROM magodmis.draft_dc_inv_details WHERE DC_Inv_No = '${dcInvNo}'`;
@@ -675,7 +716,7 @@ pnrdcRouter.post("/deleteRow", async (req, res, next) => {
 
 pnrdcRouter.post("/createDC", async (req, res, next) => {
   const { dcInvNo, unit, srlType, VoucherNoLength } = req.body;
-  console.log("VoucherNoLength", VoucherNoLength);
+  // console.log("VoucherNoLength", VoucherNoLength);
 
   const date = new Date();
   // const date = new Date("2024-04-01");
@@ -688,7 +729,7 @@ pnrdcRouter.post("/createDC", async (req, res, next) => {
   const endYearShort = yearParts[1].slice(-2);
   const finYear = `${startYearShort}/${endYearShort}`;
 
-  console.log("finYear", finYear);
+  // console.log("finYear", finYear);
 
   try {
     // Fetch prefix from magod_setup.year_prefix_suffix
@@ -728,7 +769,7 @@ pnrdcRouter.post("/createDC", async (req, res, next) => {
             .padStart(VoucherNoLength, "0");
 
           newDCNo = `${prefix}${paddedNumericPart}${suffix}`;
-          console.log("New DCNo:", newDCNo);
+          // console.log("New DCNo:", newDCNo);
 
           // Update Running_No in magod_setup.magod_runningno
           const updateRunningNoQuery = `
@@ -761,6 +802,9 @@ pnrdcRouter.post("/createDC", async (req, res, next) => {
               logger.error(updateError);
               return next(updateError);
             }
+            logger.info(
+              `successfully updated draft_dc_inv_register with DC_Inv_No='${dcInvNo}'`
+            );
 
             // Your existing select query after update
             const postUpdateSelectQuery = `SELECT * FROM magodmis.draft_dc_inv_register WHERE DC_Inv_No = ${dcInvNo}`;
@@ -812,6 +856,9 @@ pnrdcRouter.post("/receiveReturns", async (req, res, next) => {
                 logger.error(err);
                 return next(err);
               }
+              logger.info(
+                `successfully inserted data into material_receipt_register`
+              );
 
               // After the insert, retrieve the last inserted RvID
               misQueryMod("SELECT LAST_INSERT_ID() AS RvId", (err, data) => {
@@ -834,6 +881,9 @@ pnrdcRouter.post("/receiveReturns", async (req, res, next) => {
                       logger.error(err);
                       return next(err);
                     }
+                    logger.info(
+                      `successfully inserted data into mtrl_returned_details`
+                    );
                   }
                 );
               });
@@ -867,6 +917,7 @@ pnrdcRouter.post("/firstTable", async (req, res, next) => {
       `select * from magodmis.mtrl_returned_details where RvID = '${rvId}'`,
       (err, data) => {
         if (err) logger.error(err);
+        logger.info(`successfully fetched data from mtrl_returned_details`);
         res.send(data);
       }
     );
@@ -882,6 +933,7 @@ pnrdcRouter.post("/secondTable", async (req, res, next) => {
       `SELECT * FROM magodmis.draft_dc_inv_details WHERE DC_Inv_No=${dcInvNo}`,
       (err, data) => {
         if (err) logger.error(err);
+        logger.info(`successfully fetched data from draft_dc_inv_details`);
         res.send(data);
       }
     );
@@ -923,6 +975,9 @@ pnrdcRouter.post("/removeFirstTableData", async (req, res, next) => {
     misQueryMod(selectQuery, (err, selectData) => {
       if (err) {
         logger.error(err);
+        logger.info(
+          `successfully fetched data from mtrl_returned_details with RvID=${rvId}`
+        );
         return res
           .status(500)
           .json({ message: "Error executing SELECT query." });
@@ -1004,6 +1059,9 @@ pnrdcRouter.post("/addToFirstTable", async (req, res, next) => {
       misQueryMod(finalSelectQuery, (finalSelectErr, finalSelectData) => {
         if (finalSelectErr) {
           logger.error(finalSelectErr);
+          logger.info(
+            `successfully fetched data from mtrl_returned_details with RvID=${rvId}`
+          );
           return res
             .status(500)
             .json({ message: "Error executing final SELECT query." });
@@ -1050,6 +1108,9 @@ pnrdcRouter.post("/saveJobWork", async (req, res, next) => {
           logger.error(err);
           return next(err);
         }
+        logger.info(
+          `successfully updated data in mtrl_returned_details with Id=${val.Id}`
+        );
       });
     }
 
@@ -1071,6 +1132,9 @@ pnrdcRouter.post("/saveJobWork", async (req, res, next) => {
         logger.error(err);
         return next(err);
       }
+      logger.info(
+        `successfully updated data in material_receipt_register with RvID=${rvId}`
+      );
 
       const selectQuery1 = `
         SELECT * FROM magodmis.mtrl_returned_details WHERE RvID = ${rvId};
@@ -1984,6 +2048,7 @@ pnrdcRouter.post("/updateCount", async (req, res, next) => {
       (err, data) => {
         if (err) logger.error(err);
         // console.log("data", data);
+
         res.send(data);
       }
     );
@@ -2001,6 +2066,7 @@ pnrdcRouter.get("/getPDFData", async (req, res, next) => {
           console.log("err", err);
         } else {
           //   console.log("pdfData", pdfData);
+          logger.info("successfully fetched data from magodlaser_units");
 
           res.send(pdfData);
         }
